@@ -45,6 +45,7 @@ export function ListingFilters({ filters }: { filters: Filters }) {
         <SlidersHorizontal /> {open ? "Hide filters" : "Filters"}
       </Button>
       <form
+        key={JSON.stringify(filters)}
         onSubmit={(e) => {
           e.preventDefault();
           submit(e.currentTarget);
