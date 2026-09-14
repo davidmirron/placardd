@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bids, conversations, listings, orders, reviews, users, zones, type ListingCategory } from "@/lib/db/schema";
-import { settleExpired } from "@/lib/auctions";
+import { isZoneLive, settleExpired } from "@/lib/auctions";
 import { LISTING_CATEGORIES } from "@/lib/db/schema";
 
 export type ListingSort = "ending" | "newest" | "price_asc" | "price_desc" | "reach";
@@ -103,7 +103,8 @@ export async function getListingDetail(id: string) {
   });
   if (!listing) return null;
   const stats = await sellerStats(listing.sellerId);
-  return { ...listing, sellerStats: stats };
+  const now = Date.now();
+  return { ...listing, zones: listing.zones.map((z) => ({ ...z, live: isZoneLive(z, now) })), sellerStats: stats };
 }
 
 export type ListingDetail = NonNullable<Awaited<ReturnType<typeof getListingDetail>>>;
@@ -194,8 +195,8 @@ export async function getOrderForUser(orderId: string, userId: string) {
     with: {
       zone: { with: { photo: true } },
       listing: { columns: { id: true, title: true, eventName: true, eventDate: true, location: true, includes: true } },
-      seller: { columns: { id: true, name: true, handle: true, avatarUrl: true, socialHandle: true } },
-      buyer: { columns: { id: true, name: true, handle: true, avatarUrl: true, companyName: true, website: true } },
+      seller: { columns: { id: true, name: true, handle: true, avatarUrl: true, socialHandle: true, companyName: true, website: true } },
+      buyer: { columns: { id: true, name: true, handle: true, avatarUrl: true, socialHandle: true, companyName: true, website: true } },
       files: { orderBy: asc(sql`created_at`) },
       reviews: true,
     },

@@ -1,69 +1,160 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Camera, Gavel, ShieldCheck, Sparkles, Store, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ListingCard } from "@/components/listing-card";
+import { ZoneOverlay } from "@/components/zone-overlay";
+import { getCurrentUser } from "@/lib/auth";
+import { formatMoney } from "@/lib/format";
+import { getFeaturedListings, getMarketplaceStats } from "@/lib/queries";
 
-export default function Home() {
+export default async function HomePage() {
+  const [featured, stats, user] = await Promise.all([getFeaturedListings(6), getMarketplaceStats(), getCurrentUser()]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <div>
+      <section className="border-b bg-gradient-to-b from-brand-soft/60 to-background">
+        <div className="container-page grid items-center gap-10 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
+          <div className="space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs font-medium">
+              <Sparkles className="size-3.5 text-brand" /> Sponsorships for everyone, not just athletes
+            </span>
+            <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+              Sell the space you already carry.
+            </h1>
+            <p className="max-w-xl text-lg text-muted-foreground">
+              Placard is the marketplace for on-body and physical sponsorships. Photograph your outfit, car, bag or booth, draw the ad spots, and let brands bid on them for the event you&apos;re heading to.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg">
+                <Link href={user?.role === "creator" ? "/sell/new" : "/signup?role=creator"}>
+                  List your first spot <ArrowRight />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/listings">Browse live auctions</Link>
+              </Button>
+            </div>
+            <dl className="grid grid-cols-3 gap-4 pt-2 text-sm">
+              <div>
+                <dt className="text-muted-foreground">Live spots</dt>
+                <dd className="text-2xl font-semibold tabular-nums">{stats.liveSpots}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Bids placed</dt>
+                <dd className="text-2xl font-semibold tabular-nums">{stats.bids}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Paid to creators</dt>
+                <dd className="text-2xl font-semibold tabular-nums">{formatMoney(stats.volumeCents, { compact: true })}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-sm lg:max-w-md">
+            <ZoneOverlay
+              photo={{ url: "/demo/dress-front.svg", label: "Speaker dress", width: 800, height: 1000 }}
+              interactive={false}
+              className="shadow-2xl ring-1 ring-black/5"
+              zones={[
+                { id: "a", number: 1, label: "Front chest", x: 0.4, y: 0.34, w: 0.2, h: 0.09, status: "sold" },
+                { id: "b", number: 2, label: "Waist band", x: 0.33, y: 0.55, w: 0.34, h: 0.06 },
+                { id: "c", number: 3, label: "Left hip", x: 0.27, y: 0.64, w: 0.17, h: 0.12 },
+                { id: "d", number: 4, label: "Right hip", x: 0.56, y: 0.64, w: 0.17, h: 0.12 },
+                { id: "e", number: 5, label: "Hem strip", x: 0.26, y: 0.8, w: 0.48, h: 0.05 },
+              ]}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <div className="absolute -bottom-5 -left-4 rounded-xl border bg-background p-3 shadow-lg sm:-left-8">
+              <p className="text-xs text-muted-foreground">Front chest · doubling auction</p>
+              <p className="text-lg font-semibold tabular-nums">$2,800</p>
+              <p className="text-xs text-emerald-600">4 bids · next bid $5,600</p>
+            </div>
+          </div>
         </div>
-      </main>
+      </section>
+
+      <section className="container-page py-16">
+        <div className="mb-10 max-w-2xl space-y-2">
+          <h2 className="text-3xl font-semibold tracking-tight">How it works</h2>
+          <p className="text-muted-foreground">Old-school sponsorships take agents and months. Placard takes a photo and an afternoon.</p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {[
+            {
+              icon: Camera,
+              title: "Photograph and map",
+              body: "Upload front, back and side photos of whatever will be seen. Draw rectangles on the exact spots you're offering and set a starting price or a fixed price.",
+            },
+            {
+              icon: Gavel,
+              title: "Brands bid",
+              body: "Choose classic increments or the viral doubling rule. Countdown auctions with anti-sniping, or instant buy-now for brands in a hurry.",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Prove it, get paid",
+              body: "Brands pay up front and Placard holds the money. After the event you upload proof photos, the brand approves, and the payout is released.",
+            },
+          ].map((s) => (
+            <div key={s.title} className="rounded-2xl border p-6">
+              <s.icon className="mb-4 size-6 text-brand" />
+              <h3 className="mb-2 font-semibold">{s.title}</h3>
+              <p className="text-sm text-muted-foreground">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y bg-muted/30">
+        <div className="container-page py-16">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-semibold tracking-tight">Ending soon</h2>
+              <p className="text-muted-foreground">Live spots closing next. Bids double on some of these.</p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/listings">
+                See all <ArrowRight />
+              </Link>
+            </Button>
+          </div>
+          {featured.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-background p-12 text-center">
+              <Store className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="font-medium">No live listings yet</p>
+              <p className="text-sm text-muted-foreground">Be the first to list a spot and set the tone for the marketplace.</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {featured.map((l) => (
+                <ListingCard key={l.id} listing={l} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="container-page grid gap-8 py-16 lg:grid-cols-2">
+        <div className="rounded-2xl border bg-foreground p-8 text-background">
+          <Wallet className="mb-4 size-6 text-brand" />
+          <h3 className="text-2xl font-semibold">For creators</h3>
+          <p className="mt-2 text-background/75">
+            Speaking at a conference, running a marathon, driving to a festival? You already have the audience. Turn it into income with zero cold outreach.
+          </p>
+          <Button asChild variant="secondary" className="mt-6">
+            <Link href="/signup?role=creator">Create a creator account</Link>
+          </Button>
+        </div>
+        <div className="rounded-2xl border p-8">
+          <Store className="mb-4 size-6 text-brand" />
+          <h3 className="text-2xl font-semibold">For brands</h3>
+          <p className="mt-2 text-muted-foreground">
+            Buy hyper-targeted visibility inside the exact room your customers are in — with social amplification built in and proof of delivery before money moves.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/signup?role=brand">Create a brand account</Link>
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }
