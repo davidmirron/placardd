@@ -8,7 +8,10 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { BID_RULES, LISTING_CATEGORIES, listings, photos, SALE_TYPES, zones } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
+import { AUCTIONS_ENABLED } from "@/lib/constants";
 import { dollarsToCents, fieldNumber, fieldString, type ActionState } from "./types";
+
+const DEFAULT_AVAILABILITY_MS = 90 * 24 * 60 * 60 * 1000;
 
 const listingSchema = z.object({
   title: z.string().min(4, "Give your listing a clear title.").max(120),
@@ -17,7 +20,7 @@ const listingSchema = z.object({
   eventName: z.string().max(120),
   eventDate: z.string(),
   location: z.string().min(2, "Where will this be seen?").max(120),
-  biddingEndsAt: z.string().min(1, "Set a bidding deadline."),
+  biddingEndsAt: z.string(),
   reachInPerson: z.number().min(0),
   reachSocial: z.number().min(0),
   includes: z.string().max(2000),
@@ -44,6 +47,31 @@ function toDate(value: string) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * When spots stop being purchasable. Explicit value wins; otherwise the end of the event day,
+ * otherwise a generous default. In auction mode this is the bidding deadline and must be set.
+ */
+function resolveAvailability(data: { biddingEndsAt: string; eventDate: string }): { endsAt: Date } | { error: string } {
+  const explicit = toDate(data.biddingEndsAt);
+  if (data.biddingEndsAt && !explicit) return { error: AUCTIONS_ENABLED ? "Set a valid bidding deadline." : "Set a valid date for when the spots stop being available." };
+  if (AUCTIONS_ENABLED && !explicit) return { error: "Set a bidding deadline." };
+
+  let endsAt = explicit;
+  if (!endsAt) {
+    const eventDate = toDate(data.eventDate);
+    if (eventDate) {
+      endsAt = new Date(eventDate);
+      endsAt.setHours(23, 59, 0, 0);
+    }
+  }
+  if (!endsAt) endsAt = new Date(Date.now() + DEFAULT_AVAILABILITY_MS);
+
+  if (endsAt.getTime() < Date.now() + 60 * 60 * 1000) {
+    return { error: AUCTIONS_ENABLED ? "The bidding deadline must be at least an hour from now." : "Spots must stay available for at least an hour from now. Check the event date or the 'available until' field." };
+  }
+  return { endsAt };
+}
+
 async function ownedListing(listingId: string, userId: string) {
   const listing = await db.query.listings.findFirst({ where: and(eq(listings.id, listingId), eq(listings.sellerId, userId)) });
   if (!listing) throw new Error("Listing not found.");
@@ -55,10 +83,9 @@ export async function createListing(_prev: ActionState, form: FormData): Promise
   const parsed = parseListingForm(form);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   const data = parsed.data;
-  const biddingEndsAt = toDate(data.biddingEndsAt);
-  if (!biddingEndsAt || biddingEndsAt.getTime() < Date.now() + 60 * 60 * 1000) {
-    return { error: "The bidding deadline must be at least an hour from now." };
-  }
+  const availability = resolveAvailability(data);
+  if ("error" in availability) return { error: availability.error };
+  const biddingEndsAt = availability.endsAt;
 
   const id = nanoid(10);
   await db.insert(listings).values({
@@ -85,8 +112,9 @@ export async function updateListing(listingId: string, _prev: ActionState, form:
   const parsed = parseListingForm(form);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   const data = parsed.data;
-  const biddingEndsAt = toDate(data.biddingEndsAt);
-  if (!biddingEndsAt) return { error: "Set a valid bidding deadline." };
+  const availability = resolveAvailability(data);
+  if ("error" in availability) return { error: availability.error };
+  const biddingEndsAt = availability.endsAt;
 
   await db.transaction(async (tx) => {
     await tx
@@ -105,7 +133,7 @@ export async function updateListing(listingId: string, _prev: ActionState, form:
         updatedAt: new Date(),
       })
       .where(eq(listings.id, listingId));
-    // Spots without bids follow the listing deadline; spots with bids keep their own clock.
+    // Open spots without bids follow the listing's availability; spots with bids keep their own clock.
     await tx
       .update(zones)
       .set({ endsAt: biddingEndsAt })
@@ -181,9 +209,11 @@ export async function saveZones(listingId: string, input: ZoneInput[]): Promise<
   await db.transaction(async (tx) => {
     let order = 0;
     for (const z of parsed.data) {
-      const buyNowCents = z.saleType === "auction" && z.buyNowPrice ? dollarsToCents(z.buyNowPrice) : null;
+      // With auctions switched off every spot is a fixed price, whatever the client sent.
+      const saleType = AUCTIONS_ENABLED ? z.saleType : "buy_now";
+      const buyNowCents = saleType === "auction" && z.buyNowPrice ? dollarsToCents(z.buyNowPrice) : null;
       const pricing = {
-        saleType: z.saleType,
+        saleType,
         bidRule: z.bidRule,
         startingPriceCents: dollarsToCents(z.startingPrice),
         minIncrementCents: dollarsToCents(z.minIncrement || 25),
@@ -214,7 +244,7 @@ export async function saveZones(listingId: string, input: ZoneInput[]): Promise<
   revalidatePath(`/sell/${listingId}/edit`);
   revalidatePath(`/listings/${listingId}`);
   return lockedRemoved.length
-    ? { success: "Spots saved. Spots with bids or orders were kept." }
+    ? { success: AUCTIONS_ENABLED ? "Spots saved. Spots with bids or orders were kept." : "Spots saved. Spots that already have an order were kept." }
     : { success: "Spots saved." };
 }
 
@@ -227,7 +257,9 @@ export async function publishListing(listingId: string): Promise<ActionState> {
   ]);
   if (photoCount.length === 0) return { error: "Add at least one photo before publishing." };
   if (zoneCount.length === 0) return { error: "Draw at least one ad spot before publishing." };
-  if (listing.biddingEndsAt.getTime() < Date.now()) return { error: "The bidding deadline is in the past. Update it first." };
+  if (listing.biddingEndsAt.getTime() < Date.now()) {
+    return { error: AUCTIONS_ENABLED ? "The bidding deadline is in the past. Update it first." : "The 'available until' date is in the past. Update it first." };
+  }
 
   await db.update(listings).set({ status: "active", updatedAt: new Date() }).where(eq(listings.id, listingId));
   revalidatePath("/listings");

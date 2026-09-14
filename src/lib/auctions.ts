@@ -2,7 +2,7 @@ import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, type Db } from "@/lib/db";
 import { bids, listings, orders, zones, type Zone } from "@/lib/db/schema";
-import { ANTI_SNIPE_WINDOW_MS, PAYMENT_WINDOW_MS } from "@/lib/constants";
+import { ANTI_SNIPE_WINDOW_MS, AUCTION_PAYMENT_WINDOW_MS, AUCTIONS_ENABLED, BUY_NOW_HOLD_MS } from "@/lib/constants";
 import { splitAmount } from "@/lib/money";
 
 export class AuctionError extends Error {}
@@ -19,6 +19,8 @@ export function minimumNextBid(zone: Pick<Zone, "currentBidCents" | "startingPri
 /** Price a brand pays to take the zone immediately, or null if buy-now is not offered. */
 export function buyNowPrice(zone: Pick<Zone, "saleType" | "buyNowPriceCents" | "startingPriceCents" | "currentBidCents">) {
   if (zone.saleType === "buy_now") return zone.startingPriceCents;
+  // Auctions off: a spot configured as an auction is sold outright at its buy-now price, or its floor.
+  if (!AUCTIONS_ENABLED) return zone.buyNowPriceCents ?? zone.startingPriceCents;
   if (zone.buyNowPriceCents == null) return null;
   // Once bidding passes the buy-now price the instant option disappears.
   if (zone.currentBidCents != null && zone.currentBidCents >= zone.buyNowPriceCents) return null;
@@ -49,6 +51,7 @@ async function createOrder(tx: Tx, zone: Zone, buyerId: string, amountCents: num
 }
 
 export async function placeBid(zoneId: string, bidderId: string, amountCents: number) {
+  if (!AUCTIONS_ENABLED) throw new AuctionError("Bidding is not available right now. Spots are sold at a fixed price.");
   if (!Number.isInteger(amountCents) || amountCents <= 0) throw new AuctionError("Enter a valid bid amount.");
 
   return db.transaction(async (tx) => {
@@ -132,13 +135,19 @@ export async function settleExpired(listingId?: string) {
       }
     }
 
-    // Orders nobody paid for inside the payment window are released.
-    const stale = await tx.query.orders.findMany({
+    // Orders nobody paid for inside their window are released. Fixed-price buys are a checkout in
+    // progress and get a short hold; auction wins get longer because the winner is notified after the fact.
+    const pending = await tx.query.orders.findMany({
       where: and(
         eq(orders.status, "pending_payment"),
-        lt(orders.createdAt, new Date(now.getTime() - PAYMENT_WINDOW_MS)),
+        lt(orders.createdAt, new Date(now.getTime() - BUY_NOW_HOLD_MS)),
         listingId ? eq(orders.listingId, listingId) : undefined,
       ),
+      with: { zone: { columns: { saleType: true } } },
+    });
+    const stale = pending.filter((o) => {
+      const window = o.zone.saleType === "auction" ? AUCTION_PAYMENT_WINDOW_MS : BUY_NOW_HOLD_MS;
+      return o.createdAt.getTime() < now.getTime() - window;
     });
     if (stale.length) {
       const ids = stale.map((o) => o.id);

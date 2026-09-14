@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Camera, Gavel, ShieldCheck, Sparkles, Store, Wallet } from "lucide-react";
+import { ArrowRight, Camera, ShoppingBag, ShieldCheck, Sparkles, Store, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/listing-card";
 import { ZoneOverlay } from "@/components/zone-overlay";
 import { getCurrentUser } from "@/lib/auth";
+import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { getFeaturedListings, getMarketplaceStats } from "@/lib/queries";
 
@@ -22,7 +23,7 @@ export default async function HomePage() {
               Sell the space you already carry.
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
-              Placard is the marketplace for on-body and physical sponsorships. Photograph your outfit, car, bag or booth, draw the ad spots, and let brands bid on them for the event you&apos;re heading to.
+              Placard is the marketplace for on-body and physical sponsorships. Photograph your outfit, car, bag or booth, draw the ad spots, name your price, and brands buy them for the event you&apos;re heading to.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
@@ -31,17 +32,17 @@ export default async function HomePage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/listings">Browse live auctions</Link>
+                <Link href="/listings">Browse open spots</Link>
               </Button>
             </div>
             <dl className="grid grid-cols-3 gap-4 pt-2 text-sm">
               <div>
-                <dt className="text-muted-foreground">Live spots</dt>
+                <dt className="text-muted-foreground">Spots for sale</dt>
                 <dd className="text-2xl font-semibold tabular-nums">{stats.liveSpots}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Bids placed</dt>
-                <dd className="text-2xl font-semibold tabular-nums">{stats.bids}</dd>
+                <dt className="text-muted-foreground">Spots sold</dt>
+                <dd className="text-2xl font-semibold tabular-nums">{stats.spotsSold}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Paid to creators</dt>
@@ -64,9 +65,9 @@ export default async function HomePage() {
               ]}
             />
             <div className="absolute -bottom-5 -left-4 rounded-xl border bg-background p-3 shadow-lg sm:-left-8">
-              <p className="text-xs text-muted-foreground">Front chest · doubling auction</p>
+              <p className="text-xs text-muted-foreground">Front chest · 12 cm, on stage both days</p>
               <p className="text-lg font-semibold tabular-nums">$2,800</p>
-              <p className="text-xs text-emerald-600">4 bids · next bid $5,600</p>
+              <p className="text-xs text-emerald-600">Sold · paid up front, 4 spots still open</p>
             </div>
           </div>
         </div>
@@ -82,17 +83,17 @@ export default async function HomePage() {
             {
               icon: Camera,
               title: "Photograph and map",
-              body: "Upload front, back and side photos of whatever will be seen. Draw rectangles on the exact spots you're offering and set a starting price or a fixed price.",
+              body: "Upload front, back and side photos of whatever will be seen. Draw rectangles on the exact spots you're offering and put a price on each one.",
             },
             {
-              icon: Gavel,
-              title: "Brands bid",
-              body: "Choose classic increments or the viral doubling rule. Countdown auctions with anti-sniping, or instant buy-now for brands in a hurry.",
+              icon: ShoppingBag,
+              title: "Brands buy",
+              body: "A brand picks a spot and pays at checkout. No bidding, no back-and-forth, no waiting to find out — the spot is theirs the moment payment clears.",
             },
             {
               icon: ShieldCheck,
               title: "Prove it, get paid",
-              body: "Brands pay up front and Placard holds the money. After the event you upload proof photos, the brand approves, and the payout is released.",
+              body: `Placard holds the money. After the event you upload proof photos, the brand approves, and the payout is released minus a ${PLATFORM_FEE_PERCENT}% fee.`,
             },
           ].map((s) => (
             <div key={s.title} className="rounded-2xl border p-6">
@@ -108,8 +109,8 @@ export default async function HomePage() {
         <div className="container-page py-16">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div className="space-y-2">
-              <h2 className="text-3xl font-semibold tracking-tight">Ending soon</h2>
-              <p className="text-muted-foreground">Live spots closing next. Bids double on some of these.</p>
+              <h2 className="text-3xl font-semibold tracking-tight">Closing soon</h2>
+              <p className="text-muted-foreground">Spots you can still buy, soonest deadline first.</p>
             </div>
             <Button asChild variant="outline">
               <Link href="/listings">
@@ -148,7 +149,7 @@ export default async function HomePage() {
           <Store className="mb-4 size-6 text-brand" />
           <h3 className="text-2xl font-semibold">For brands</h3>
           <p className="mt-2 text-muted-foreground">
-            Buy hyper-targeted visibility inside the exact room your customers are in — with social amplification built in and proof of delivery before money moves.
+            Buy hyper-targeted visibility inside the exact room your customers are in. Fixed prices, pay at checkout, and proof of delivery before the creator is paid.
           </p>
           <Button asChild className="mt-6">
             <Link href="/signup?role=brand">Create a brand account</Link>

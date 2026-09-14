@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FormMessage, SubmitButton } from "@/components/form-bits";
-import { CATEGORY_DESCRIPTIONS, CATEGORY_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, CATEGORY_DESCRIPTIONS, CATEGORY_LABELS } from "@/lib/constants";
 import type { ActionState } from "@/lib/actions/types";
 import { LISTING_CATEGORIES, type Listing } from "@/lib/db/schema";
 
@@ -25,7 +25,8 @@ export function ListingForm({
   submitLabel: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
-  const [defaultDeadline] = useState(() => listing?.biddingEndsAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  // Auctions need a deadline up front; fixed-price listings can leave it blank and default to the event day.
+  const [defaultDeadline] = useState(() => listing?.biddingEndsAt ?? (AUCTIONS_ENABLED ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null));
 
   return (
     <form action={formAction} className="space-y-8">
@@ -75,11 +76,21 @@ export function ListingForm({
             <Label htmlFor="location">Location</Label>
             <Input id="location" name="location" required defaultValue={listing?.location} placeholder="Singapore" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="biddingEndsAt">Bidding closes</Label>
-            <Input id="biddingEndsAt" name="biddingEndsAt" type="datetime-local" required defaultValue={toLocalInput(defaultDeadline)} />
-            <p className="text-xs text-muted-foreground">Leave enough time after this to print or apply the logos.</p>
-          </div>
+          {AUCTIONS_ENABLED ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="biddingEndsAt">Bidding closes</Label>
+              <Input id="biddingEndsAt" name="biddingEndsAt" type="datetime-local" required defaultValue={toLocalInput(defaultDeadline)} />
+              <p className="text-xs text-muted-foreground">Leave enough time after this to print or apply the logos.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="biddingEndsAt">
+                Available until <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input id="biddingEndsAt" name="biddingEndsAt" type="datetime-local" defaultValue={toLocalInput(defaultDeadline)} />
+              <p className="text-xs text-muted-foreground">Spots stop being purchasable at this time. Leave blank to sell until the end of the event day.</p>
+            </div>
+          )}
         </div>
       </section>
 

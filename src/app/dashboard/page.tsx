@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/countdown";
 import { ListingStatusBadge, OrderStatusBadge } from "@/components/status-badge";
 import { requireUser } from "@/lib/auth";
+import { AUCTIONS_ENABLED } from "@/lib/constants";
 import { formatDate, formatMoney, pluralize } from "@/lib/format";
 import { getBrandDashboard, getCreatorDashboard } from "@/lib/queries";
 
@@ -57,11 +58,12 @@ async function CreatorDashboard({ userId }: { userId: string }) {
   const data = await getCreatorDashboard(userId);
   const needsProof = data.orders.filter((o) => o.status === "paid" || o.status === "disputed");
   const live = data.listings.filter((l) => l.status === "active");
+  const openSpots = live.reduce((n, l) => n + l.zones.filter((z) => z.status === "open").length, 0);
 
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Live listings" value={String(live.length)} hint={`${pluralize(data.liveBids, "active bid")}`} />
+        <Stat label="Live listings" value={String(live.length)} hint={AUCTIONS_ENABLED ? pluralize(data.liveBids, "active bid") : `${pluralize(openSpots, "spot")} for sale`} />
         <Stat label="Earnings (after fees)" value={formatMoney(data.earnings)} hint={`${formatMoney(data.released)} released`} />
         <Stat label="Orders needing proof" value={String(needsProof.length)} hint={needsProof.length ? "Upload proof to release payouts" : "Nothing waiting on you"} />
       </div>
@@ -97,7 +99,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
         {data.listings.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-10 text-center">
             <p className="font-medium">No listings yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Photograph what you&apos;ll wear, drive or carry at your next event and put it up for bids.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Photograph what you&apos;ll wear, drive or carry at your next event and put a price on the spots.</p>
             <Button asChild className="mt-4">
               <Link href="/sell/new">Create your first listing</Link>
             </Button>
@@ -107,7 +109,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
             {data.listings.map((l) => {
               const open = l.zones.filter((z) => z.status === "open");
               const sold = l.zones.filter((z) => z.status === "sold");
-              const value = l.zones.reduce((s, z) => s + (z.currentBidCents ?? 0), 0);
+              const value = AUCTIONS_ENABLED ? l.zones.reduce((s, z) => s + (z.currentBidCents ?? 0), 0) : sold.reduce((s, z) => s + (z.currentBidCents ?? z.startingPriceCents), 0);
               return (
                 <li key={l.id} className="flex gap-4 rounded-2xl border p-4">
                   <div className="size-24 shrink-0 overflow-hidden rounded-xl bg-muted">
@@ -127,11 +129,12 @@ async function CreatorDashboard({ userId }: { userId: string }) {
                       {pluralize(l.zones.length, "spot")} · {open.length} open · {sold.length} sold
                     </p>
                     <p className="text-sm">
-                      Bids so far: <span className="font-medium tabular-nums">{formatMoney(value)}</span>
+                      {AUCTIONS_ENABLED ? "Bids so far: " : "Sold so far: "}
+                      <span className="font-medium tabular-nums">{formatMoney(value)}</span>
                       {l.status === "active" && (
                         <span className="text-muted-foreground">
                           {" "}
-                          · closes in <Countdown endsAt={l.biddingEndsAt} compact />
+                          · {AUCTIONS_ENABLED ? "closes" : "available for"} <Countdown endsAt={l.biddingEndsAt} compact />
                         </span>
                       )}
                     </p>
@@ -153,7 +156,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
 
       <OrdersTable
         title="Orders"
-        empty="Orders appear here when a brand wins or buys one of your spots."
+        empty={AUCTIONS_ENABLED ? "Orders appear here when a brand wins or buys one of your spots." : "Orders appear here when a brand buys one of your spots."}
         rows={data.orders.map((o) => ({
           id: o.id,
           title: `${o.zone.label} · ${o.listing.title}`,
@@ -174,11 +177,16 @@ async function BrandDashboard({ userId }: { userId: string }) {
   const toReview = data.orders.filter((o) => o.status === "proof_submitted");
   const liveBids = data.bidZones.filter((z) => z.status === "open");
   const leading = liveBids.filter((z) => z.currentBidderId === userId);
+  const activeOrders = data.orders.filter((o) => o.status !== "cancelled");
 
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Live bids" value={String(liveBids.length)} hint={`Leading on ${leading.length}, outbid on ${liveBids.length - leading.length}`} />
+        {AUCTIONS_ENABLED ? (
+          <Stat label="Live bids" value={String(liveBids.length)} hint={`Leading on ${leading.length}, outbid on ${liveBids.length - leading.length}`} />
+        ) : (
+          <Stat label="Spots bought" value={String(activeOrders.length)} hint={activeOrders.length ? `${pluralize(activeOrders.filter((o) => o.status === "completed").length, "deal")} completed` : "Browse spots to buy your first"} />
+        )}
         <Stat label="Total spend" value={formatMoney(data.spend)} hint="Paid orders" />
         <Stat label="Awaiting you" value={String(toPay.length + toReview.length)} hint={toPay.length ? `${pluralize(toPay.length, "order")} to pay` : toReview.length ? "Proof to approve" : "All caught up"} />
       </div>
@@ -209,6 +217,7 @@ async function BrandDashboard({ userId }: { userId: string }) {
         </section>
       )}
 
+      {AUCTIONS_ENABLED && (
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Your bids</h2>
         {data.bidZones.length === 0 ? (
@@ -266,10 +275,11 @@ async function BrandDashboard({ userId }: { userId: string }) {
           </ul>
         )}
       </section>
+      )}
 
       <OrdersTable
         title="Orders"
-        empty="Won auctions and buy-now purchases show up here."
+        empty={AUCTIONS_ENABLED ? "Won auctions and buy-now purchases show up here." : "Spots you buy show up here. Find a creator heading to the room your customers are in."}
         rows={data.orders.map((o) => ({
           id: o.id,
           title: `${o.zone.label} · ${o.listing.title}`,

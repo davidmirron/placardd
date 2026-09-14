@@ -10,7 +10,7 @@ import { FormMessage, SubmitButton } from "@/components/form-bits";
 import { ZoneStatusBadge } from "@/components/status-badge";
 import { ZoneOverlay } from "@/components/zone-overlay";
 import { buyNowAction, placeBidAction } from "@/lib/actions/bids";
-import { BID_RULE_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, BID_RULE_LABELS } from "@/lib/constants";
 import type { BidRule, SaleType, ZoneStatus } from "@/lib/db/schema";
 import { formatMoney, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -50,8 +50,10 @@ function minimumNextBid(s: SpotView) {
   return s.bidRule === "doubling" ? s.currentBidCents * 2 : s.currentBidCents + s.minIncrementCents;
 }
 
+// Mirrors buyNowPrice in lib/auctions.ts for display; the server re-validates on submit.
 function buyNowPrice(s: SpotView) {
   if (s.saleType === "buy_now") return s.startingPriceCents;
+  if (!AUCTIONS_ENABLED) return s.buyNowPriceCents ?? s.startingPriceCents;
   if (s.buyNowPriceCents == null) return null;
   if (s.currentBidCents != null && s.currentBidCents >= s.buyNowPriceCents) return null;
   return s.buyNowPriceCents;
@@ -163,9 +165,11 @@ function SpotCard({
   onSelect: () => void;
 }) {
   const live = spot.live && listingActive;
+  // A legacy auction spot is shown as a plain purchase when auctions are switched off.
+  const isAuction = AUCTIONS_ENABLED && spot.saleType === "auction";
   const minBid = minimumNextBid(spot);
   const instant = buyNowPrice(spot);
-  const leading = viewer && spot.currentBidderId === viewer.id;
+  const leading = isAuction && viewer && spot.currentBidderId === viewer.id;
   const wonByViewer = viewer && spot.orderBuyerId === viewer.id;
   const [showHistory, setShowHistory] = useState(false);
 
@@ -183,10 +187,10 @@ function SpotCard({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold">{spot.label}</h3>
               {spot.status !== "open" && <ZoneStatusBadge status={spot.status} />}
-              <span className="text-xs text-muted-foreground">{spot.saleType === "buy_now" ? "Fixed price" : BID_RULE_LABELS[spot.bidRule]}</span>
+              {isAuction && <span className="text-xs text-muted-foreground">{BID_RULE_LABELS[spot.bidRule]}</span>}
             </div>
             {spot.description && <p className="text-sm text-muted-foreground">{spot.description}</p>}
-            {spot.saleType === "auction" && (
+            {isAuction && (
               <p className="text-xs text-muted-foreground">
                 {pluralize(spot.bidCount, "bid")}
                 {spot.currentBidderName && ` · leading: ${spot.currentBidderName}`}
@@ -208,7 +212,7 @@ function SpotCard({
         </div>
 
         <div className="shrink-0 text-left sm:text-right">
-          {spot.saleType === "auction" ? (
+          {isAuction ? (
             <>
               <p className="text-xs text-muted-foreground">{spot.currentBidCents != null ? "Current bid" : "Starting bid"}</p>
               <p className="text-2xl font-semibold tabular-nums">{formatMoney(spot.currentBidCents ?? spot.startingPriceCents)}</p>
@@ -216,7 +220,7 @@ function SpotCard({
           ) : (
             <>
               <p className="text-xs text-muted-foreground">Price</p>
-              <p className="text-2xl font-semibold tabular-nums">{formatMoney(spot.startingPriceCents)}</p>
+              <p className="text-2xl font-semibold tabular-nums">{formatMoney(instant ?? spot.startingPriceCents)}</p>
             </>
           )}
           {spot.status === "open" && (
@@ -227,7 +231,7 @@ function SpotCard({
         </div>
       </div>
 
-      {showHistory && spot.bids.length > 0 && (
+      {isAuction && showHistory && spot.bids.length > 0 && (
         <ul className="mt-4 divide-y rounded-lg border text-sm">
           {spot.bids.map((b) => (
             <li key={b.id} className="flex items-center justify-between px-3 py-1.5">
@@ -262,29 +266,43 @@ function SpotCard({
             )}
           </p>
         ) : !live ? (
-          <p className="text-sm text-muted-foreground">{spot.status === "open" ? "Bidding on this spot has closed." : "This spot is no longer available."}</p>
+          <p className="text-sm text-muted-foreground">{spot.status === "open" && isAuction ? "Bidding on this spot has closed." : "This spot is no longer available."}</p>
         ) : isOwner ? (
           <p className="text-sm text-muted-foreground">
-            {spot.saleType === "auction" ? `Next bid must be at least ${formatMoney(minBid)}.` : "Waiting for a brand to buy this spot."}
+            {isAuction ? `Next bid must be at least ${formatMoney(minBid)}.` : "Waiting for a brand to buy this spot."}
           </p>
         ) : !viewer ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-            <span className="text-muted-foreground">{spot.saleType === "auction" ? `Next bid from ${formatMoney(minBid)}` : "Available now"}</span>
+            <span className="text-muted-foreground">{isAuction ? `Next bid from ${formatMoney(minBid)}` : "Available now · pay at checkout"}</span>
             <Button asChild size="sm">
-              <Link href={`/login?next=${encodeURIComponent(`/listings/${listingId}`)}`}>Sign in to {spot.saleType === "auction" ? "bid" : "buy"}</Link>
+              <Link href={`/login?next=${encodeURIComponent(`/listings/${listingId}`)}`}>Sign in to {isAuction ? "bid" : "buy"}</Link>
             </Button>
           </div>
         ) : viewer.role !== "brand" ? (
-          <p className="text-sm text-muted-foreground">Only brand accounts can bid or buy. Create a brand account to take part.</p>
+          <p className="text-sm text-muted-foreground">Only brand accounts can {isAuction ? "bid or " : ""}buy. Create a brand account to take part.</p>
         ) : (
-          <BidControls key={`${minBid}-${instant ?? 0}`} spot={spot} listingId={listingId} minBid={minBid} instant={instant} leading={!!leading} />
+          <BidControls key={`${minBid}-${instant ?? 0}`} spot={spot} listingId={listingId} minBid={minBid} instant={instant} leading={!!leading} isAuction={isAuction} />
         )}
       </div>
     </div>
   );
 }
 
-function BidControls({ spot, listingId, minBid, instant, leading }: { spot: SpotView; listingId: string; minBid: number; instant: number | null; leading: boolean }) {
+function BidControls({
+  spot,
+  listingId,
+  minBid,
+  instant,
+  leading,
+  isAuction,
+}: {
+  spot: SpotView;
+  listingId: string;
+  minBid: number;
+  instant: number | null;
+  leading: boolean;
+  isAuction: boolean;
+}) {
   const [bidState, bidAction] = useActionState(placeBidAction, undefined);
   const [buyState, buyAction] = useActionState(buyNowAction, undefined);
   const [amount, setAmount] = useState(String(minBid / 100));
@@ -296,8 +314,8 @@ function BidControls({ spot, listingId, minBid, instant, leading }: { spot: Spot
           You&apos;re the highest bidder. We&apos;ll show it here if you get outbid.
         </p>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        {spot.saleType === "auction" && !leading && (
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        {isAuction && !leading && (
           <form action={bidAction} className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
             <input type="hidden" name="zoneId" value={spot.id} />
             <input type="hidden" name="listingId" value={listingId} />
@@ -315,11 +333,12 @@ function BidControls({ spot, listingId, minBid, instant, leading }: { spot: Spot
             </SubmitButton>
           </form>
         )}
+        {!isAuction && <p className="text-sm text-muted-foreground">You&apos;ll be taken to checkout. The spot is yours once payment clears.</p>}
         {instant != null && (
           <form action={buyAction}>
             <input type="hidden" name="zoneId" value={spot.id} />
             <input type="hidden" name="listingId" value={listingId} />
-            <SubmitButton variant={spot.saleType === "buy_now" ? "default" : "outline"} pendingText="Reserving…">
+            <SubmitButton variant={isAuction ? "outline" : "default"} pendingText="Heading to checkout…">
               <Zap /> Buy now {formatMoney(instant)}
             </SubmitButton>
           </form>

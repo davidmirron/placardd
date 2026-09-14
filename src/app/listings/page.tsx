@@ -19,7 +19,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
     <div className="container-page py-10">
       <div className="mb-6 space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight">Browse ad spots</h1>
-        <p className="text-muted-foreground">Live auctions and buy-now spots on people, cars, bags and booths at upcoming events.</p>
+        <p className="text-muted-foreground">Fixed-price ad spots on people, cars, bags and booths at upcoming events. Pick one, pay, done.</p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">

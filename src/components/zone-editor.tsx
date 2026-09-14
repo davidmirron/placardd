@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormMessage } from "@/components/form-bits";
-import { BID_RULE_DESCRIPTIONS, BID_RULE_LABELS, SALE_TYPE_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, BID_RULE_LABELS, SALE_TYPE_LABELS } from "@/lib/constants";
 import type { ActionState } from "@/lib/actions/types";
 import type { ZoneInput } from "@/lib/actions/listings";
 import type { BidRule, SaleType } from "@/lib/db/schema";
@@ -74,7 +74,7 @@ export function ZoneEditor({
       y,
       w: MIN_SIZE,
       h: MIN_SIZE,
-      saleType: "auction",
+      saleType: AUCTIONS_ENABLED ? "auction" : "buy_now",
       bidRule: "increment",
       startingPrice: 100,
       minIncrement: 25,
@@ -229,7 +229,7 @@ export function ZoneEditor({
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Drag on the photo to draw a spot. Drag a spot to move it, use the corner handle to resize. Spots with bids are locked.
+          Drag on the photo to draw a spot. Drag a spot to move it, use the corner handle to resize. {AUCTIONS_ENABLED ? "Spots with bids are locked." : "Sold spots are locked."}
         </p>
       </div>
 
@@ -261,7 +261,7 @@ export function ZoneEditor({
                     <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">{i + 1}</span>
                     <span className="flex-1 truncate">{z.label || "Untitled spot"}</span>
                     <span className="text-xs text-muted-foreground">
-                      {z.saleType === "buy_now" ? "Buy" : "Bid"} ${Number(z.startingPrice) || 0}
+                      {AUCTIONS_ENABLED && (z.saleType === "buy_now" ? "Buy " : "Bid ")}${Number(z.startingPrice) || 0}
                     </span>
                     {z.locked && <Lock className="size-3 text-muted-foreground" />}
                   </button>
@@ -283,7 +283,7 @@ export function ZoneEditor({
             </div>
             {selected.locked && (
               <p className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                This spot already has bids or an order. You can update its name and description only.
+                {AUCTIONS_ENABLED ? "This spot already has bids or an order." : "This spot has been sold."} You can update its name and description only.
               </p>
             )}
             <div className="space-y-1.5">
@@ -301,20 +301,22 @@ export function ZoneEditor({
                 maxLength={500}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className={cn("grid gap-3", AUCTIONS_ENABLED && "grid-cols-2")}>
+              {AUCTIONS_ENABLED && (
+                <div className="space-y-1.5">
+                  <Label>Sale type</Label>
+                  <Select value={selected.saleType} onValueChange={(v) => update(selected.key, { saleType: v as SaleType })} disabled={selected.locked}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(SALE_TYPE_LABELS) as SaleType[]).map((k) => (
+                        <SelectItem key={k} value={k}>{SALE_TYPE_LABELS[k]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label>Sale type</Label>
-                <Select value={selected.saleType} onValueChange={(v) => update(selected.key, { saleType: v as SaleType })} disabled={selected.locked}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(SALE_TYPE_LABELS) as SaleType[]).map((k) => (
-                      <SelectItem key={k} value={k}>{SALE_TYPE_LABELS[k]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="zone-start">{selected.saleType === "buy_now" ? "Price (USD)" : "Starting bid (USD)"}</Label>
+                <Label htmlFor="zone-start">{!AUCTIONS_ENABLED || selected.saleType === "buy_now" ? "Price (USD)" : "Starting bid (USD)"}</Label>
                 <Input
                   id="zone-start"
                   type="number"
@@ -325,9 +327,10 @@ export function ZoneEditor({
                   onChange={(e) => update(selected.key, { startingPrice: e.target.valueAsNumber || 0 })}
                   disabled={selected.locked}
                 />
+                {!AUCTIONS_ENABLED && <p className="text-xs text-muted-foreground">Brands pay this amount at checkout. The spot is theirs the moment payment clears.</p>}
               </div>
             </div>
-            {selected.saleType === "auction" && (
+            {AUCTIONS_ENABLED && selected.saleType === "auction" && (
               <>
                 <div className="space-y-1.5">
                   <Label>Bid rule</Label>
@@ -375,7 +378,7 @@ export function ZoneEditor({
           </div>
         ) : (
           <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-            Select a spot to edit its name, pricing and auction rule — or draw a new one on the photo.
+            Select a spot to edit its name{AUCTIONS_ENABLED ? ", pricing and auction rule" : ", description and price"} — or draw a new one on the photo.
           </div>
         )}
 

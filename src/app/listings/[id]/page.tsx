@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ListingSpots } from "./listing-spots";
 import { getCurrentUser } from "@/lib/auth";
 import { startConversation } from "@/lib/actions/messages";
-import { BID_RULE_DESCRIPTIONS, CATEGORY_LABELS, PLATFORM_FEE_PERCENT } from "@/lib/constants";
+import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, CATEGORY_LABELS, PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { formatDate, formatDateTime, formatReach, pluralize } from "@/lib/format";
 import { getListingDetail } from "@/lib/queries";
 
@@ -27,7 +27,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   if (listing.status === "draft" && !isOwner) notFound();
 
   const includes = listing.includes.split("\n").map((s) => s.trim()).filter(Boolean);
-  const rules = Array.from(new Set(listing.zones.filter((z) => z.saleType === "auction").map((z) => z.bidRule)));
+  const rules = AUCTIONS_ENABLED ? Array.from(new Set(listing.zones.filter((z) => z.saleType === "auction").map((z) => z.bidRule))) : [];
   const totalReach = listing.reachInPerson + listing.reachSocial;
 
   const spots = listing.zones.map((z, i) => ({
@@ -63,7 +63,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
     <div className="container-page py-8 lg:py-12">
       {sp.published && (
         <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-          Your listing is live. Share this page — every bid and outbid shows up here in real time.
+          Your listing is live. Share this page — {AUCTIONS_ENABLED ? "every bid and outbid shows up here in real time." : "brands can buy any open spot right from it."}
         </div>
       )}
       {isOwner && (
@@ -103,7 +103,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
           </div>
         </div>
         <div className="shrink-0 rounded-xl border px-4 py-3 text-sm">
-          <p className="text-muted-foreground">Bidding closes</p>
+          <p className="text-muted-foreground">{AUCTIONS_ENABLED ? "Bidding closes" : "Available until"}</p>
           <p className="font-medium">{formatDateTime(listing.biddingEndsAt)}</p>
         </div>
       </header>
@@ -206,7 +206,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
           </div>
 
           <div className="rounded-2xl border bg-muted/40 p-5 text-xs text-muted-foreground">
-            Brands pay on winning. Placard holds the funds and releases them to the creator after proof is approved. A {PLATFORM_FEE_PERCENT}% platform fee is taken from the creator side.
+            {AUCTIONS_ENABLED ? "Brands pay on winning." : "Brands pay at checkout; a spot is only taken once payment clears."} Placard holds the funds and releases them to the creator after proof is approved. A {PLATFORM_FEE_PERCENT}% platform fee is taken from the creator side.
           </div>
         </aside>
       </div>

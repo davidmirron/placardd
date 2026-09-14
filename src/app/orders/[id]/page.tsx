@@ -43,7 +43,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
     <div className="container-page max-w-5xl space-y-8 py-10">
       {sp.won && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-          You got the spot. Pay within 48 hours to lock it in, then upload your logo and placement notes.
+          You got the spot. Complete payment to lock it in, then upload your logo and placement notes.
         </div>
       )}
       {sp.paid && (
@@ -51,7 +51,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
           Payment received. Placard holds the funds until you approve proof of delivery.
         </div>
       )}
-      {sp.cancelled && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Checkout was cancelled. You can try again below.</div>}
+      {sp.cancelled && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Checkout was cancelled. The spot is held for you for a short while — pay below to keep it, or it goes back on sale.
+        </div>
+      )}
 
       <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">

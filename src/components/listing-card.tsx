@@ -3,7 +3,7 @@ import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/countdown";
 import { UserAvatar } from "@/components/user-avatar";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate, formatMoney, formatReach, pluralize } from "@/lib/format";
 import type { ListingSummary } from "@/lib/queries";
 
@@ -54,7 +54,7 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
             <p className="inline-flex items-center gap-1">
               <Users className="size-3.5" /> {formatReach(listing.reach)} reach
             </p>
-            <p>{pluralize(listing.bidCount, "bid")}</p>
+            <p>{AUCTIONS_ENABLED ? pluralize(listing.bidCount, "bid") : `${listing.soldSpots} of ${listing.totalSpots} sold`}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 border-t pt-3 text-xs text-muted-foreground">

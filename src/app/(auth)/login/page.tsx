@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-          <p className="text-sm text-muted-foreground">Sign in to manage your spots, bids and orders.</p>
+          <p className="text-sm text-muted-foreground">Sign in to manage your spots and orders.</p>
         </div>
         <LoginForm next={next} />
         <p className="text-center text-sm text-muted-foreground">

@@ -22,7 +22,7 @@ export function SignupForm({ next, defaultRole }: { next: string; defaultRole: U
         {(
           [
             { value: "creator", icon: UserRound, title: "I'm a creator", body: "I want to sell ad space on my outfit, car, bag…" },
-            { value: "brand", icon: Store, title: "I'm a brand", body: "I want to bid on and buy ad spots." },
+            { value: "brand", icon: Store, title: "I'm a brand", body: "I want to buy ad spots." },
           ] as const
         ).map((opt) => (
           <button

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/form-bits";
 import { cancelListing, deleteDraft, publishListing, unpublishListing } from "@/lib/actions/listings";
 import type { ActionState } from "@/lib/actions/types";
+import { AUCTIONS_ENABLED } from "@/lib/constants";
 import type { ListingStatus } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +70,7 @@ export function PublishPanel({
 
       {status === "active" && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Your listing is live. Edits to details save immediately; spots with bids are locked.</p>
+          <p className="text-xs text-muted-foreground">Your listing is live. Edits to details save immediately; {AUCTIONS_ENABLED ? "spots with bids" : "sold spots"} are locked.</p>
           {!hasBids && (
             <Button variant="outline" className="w-full" disabled={pending} onClick={() => run(() => unpublishListing(listingId))}>
               Move back to draft
@@ -77,7 +78,7 @@ export function PublishPanel({
           )}
           {confirmCancel ? (
             <div className="space-y-2 rounded-lg border border-destructive/40 p-3">
-              <p className="text-xs">Cancelling closes every open spot and voids current bids. Existing paid orders are kept.</p>
+              <p className="text-xs">Cancelling takes every open spot off sale{AUCTIONS_ENABLED ? " and voids current bids" : ""}. Existing paid orders are kept.</p>
               <div className="flex gap-2">
                 <Button variant="destructive" size="sm" disabled={pending} onClick={() => run(() => cancelListing(listingId))}>
                   Yes, cancel listing

@@ -62,8 +62,9 @@ export async function searchListings(filters: ListingFilters) {
     const prices = open.map((z) => z.currentBidCents ?? z.startingPriceCents);
     const fromCents = prices.length ? Math.min(...prices) : null;
     const bidCount = l.zones.reduce((n, z) => n + z.bidCount, 0);
+    const soldSpots = l.zones.filter((z) => z.status === "sold").length;
     const soonest = open.length ? Math.min(...open.map((z) => z.endsAt.getTime())) : l.biddingEndsAt.getTime();
-    return { ...l, openSpots: open.length, totalSpots: l.zones.length, fromCents, bidCount, soonestEnd: soonest, reach: l.reachInPerson + l.reachSocial };
+    return { ...l, openSpots: open.length, totalSpots: l.zones.length, soldSpots, fromCents, bidCount, soonestEnd: soonest, reach: l.reachInPerson + l.reachSocial };
   });
 
   const filtered = enriched.filter((l) => {
@@ -242,10 +243,11 @@ export async function getFeaturedListings(limit = 6) {
 }
 
 export async function getMarketplaceStats() {
-  const [[live], [bidsRow], [volume]] = await Promise.all([
+  const paidStatuses = ["paid", "proof_submitted", "completed"] as const;
+  const [[live], [sold], [volume]] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(zones).where(eq(zones.status, "open")),
-    db.select({ count: sql<number>`count(*)` }).from(bids),
-    db.select({ sum: sql<number>`coalesce(sum(${orders.amountCents}), 0)` }).from(orders).where(inArray(orders.status, ["paid", "proof_submitted", "completed"])),
+    db.select({ count: sql<number>`count(*)` }).from(orders).where(inArray(orders.status, [...paidStatuses])),
+    db.select({ sum: sql<number>`coalesce(sum(${orders.amountCents}), 0)` }).from(orders).where(inArray(orders.status, [...paidStatuses])),
   ]);
-  return { liveSpots: Number(live?.count ?? 0), bids: Number(bidsRow?.count ?? 0), volumeCents: Number(volume?.sum ?? 0) };
+  return { liveSpots: Number(live?.count ?? 0), spotsSold: Number(sold?.count ?? 0), volumeCents: Number(volume?.sum ?? 0) };
 }

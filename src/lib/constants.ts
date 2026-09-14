@@ -5,11 +5,21 @@ export const APP_TAGLINE = "Sell the space you already carry.";
 
 export const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT ?? 15);
 
+/**
+ * Auctions are built and tested but switched off for launch: a bid is a promise, not a payment,
+ * so open bidding invites no-shows. Fixed price + immediate checkout only until brands can be
+ * required to keep a verified card on file. Flip with NEXT_PUBLIC_AUCTIONS_ENABLED=true.
+ */
+export const AUCTIONS_ENABLED = process.env.NEXT_PUBLIC_AUCTIONS_ENABLED === "true";
+
 /** Bids placed inside this window extend the auction by the same amount. */
 export const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
 
-/** Unpaid orders are cancelled after this long (enforced lazily on read). */
-export const PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+/** An auction winner learns asynchronously, so they get this long to pay. */
+export const AUCTION_PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/** A fixed-price buy is a checkout in progress; the spot is held only this long if payment never lands. */
+export const BUY_NOW_HOLD_MS = 60 * 60 * 1000;
 
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 

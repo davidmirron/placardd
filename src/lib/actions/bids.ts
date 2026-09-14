@@ -1,20 +1,26 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { AuctionError, buyNow, placeBid } from "@/lib/auctions";
+import { AUCTIONS_ENABLED } from "@/lib/constants";
+import { db } from "@/lib/db";
+import { orders } from "@/lib/db/schema";
 import { formatMoney } from "@/lib/format";
+import { createCheckoutUrl } from "@/lib/payments";
 import { dollarsToCents, fieldString, type ActionState } from "./types";
 
 async function requireBrand(listingId: string) {
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(`/listings/${listingId}`)}`);
-  if (user.role !== "brand") return { user, error: "Only brand accounts can bid. Create a brand account to take part." };
+  if (user.role !== "brand") return { user, error: "Only brand accounts can buy spots. Create a brand account to take part." };
   return { user, error: undefined };
 }
 
 export async function placeBidAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  if (!AUCTIONS_ENABLED) return { error: "Bidding is not available right now. Spots are sold at a fixed price." };
   const zoneId = fieldString(form, "zoneId");
   const listingId = fieldString(form, "listingId");
   const { user, error } = await requireBrand(listingId);
@@ -41,12 +47,17 @@ export async function buyNowAction(_prev: ActionState, form: FormData): Promise<
   const listingId = fieldString(form, "listingId");
   const { user, error } = await requireBrand(listingId);
   if (error) return { error };
+  let checkoutUrl: string;
   try {
     const { orderId } = await buyNow(zoneId, user.id);
     revalidatePath(`/listings/${listingId}`);
-    redirect(`/orders/${orderId}?won=1`);
+    // The spot is held for a short window while the brand pays; unpaid holds are released by settleExpired.
+    const order = await db.query.orders.findFirst({ where: eq(orders.id, orderId), with: { zone: { columns: { label: true } }, listing: { columns: { title: true } } } });
+    if (!order) throw new Error("Order was not created.");
+    checkoutUrl = await createCheckoutUrl(order, `${order.zone.label} · ${order.listing.title}`);
   } catch (err) {
     if (err instanceof AuctionError) return { error: err.message };
     throw err;
   }
+  redirect(checkoutUrl);
 }

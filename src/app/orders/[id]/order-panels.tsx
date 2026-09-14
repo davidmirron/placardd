@@ -39,7 +39,7 @@ export function PayPanel({ orderId, amountCents, provider }: { orderId: string; 
         <div>
           <h2 className="text-lg font-semibold">Pay {formatMoney(amountCents)} to lock in your spot</h2>
           <p className="text-sm text-muted-foreground">
-            {provider === "stripe" ? "You'll be taken to Stripe's secure checkout." : "Test mode: no card needed. Stripe Checkout switches on when a key is configured."}
+            {provider === "stripe" ? "You'll be taken to Stripe's secure checkout." : "Test mode: no card needed. Stripe Checkout switches on when a key is configured."} Unpaid spots are released back to the marketplace.
           </p>
         </div>
         <Button size="lg" disabled={pending} onClick={() => run(() => startCheckout(orderId))}>

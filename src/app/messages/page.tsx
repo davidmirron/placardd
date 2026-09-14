@@ -20,7 +20,7 @@ export default async function MessagesPage() {
         <div className="rounded-2xl border border-dashed p-12 text-center">
           <MessageSquare className="mx-auto mb-3 size-8 text-muted-foreground" />
           <p className="font-medium">No conversations yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Open any listing and hit Message to ask about sizes, colours or placement before you bid.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Open any listing and hit Message to ask about sizes, colours or placement before you buy.</p>
           <Button asChild className="mt-4" variant="outline">
             <Link href="/listings">Browse listings</Link>
           </Button>
