@@ -113,11 +113,17 @@ export default async function EditListingPage({ params, searchParams }: PageProp
           {step === "photos" && (
             <div className="space-y-6">
               <PhotoManager listingId={listing.id} photos={listingPhotos.map((p) => ({ id: p.id, url: p.url, label: p.label, width: p.width, height: p.height }))} />
-              <Button asChild variant="outline" disabled={listingPhotos.length === 0}>
-                <Link href={`/sell/${listing.id}/edit?step=spots`}>
+              {listingPhotos.length === 0 ? (
+                <Button variant="outline" disabled>
                   Next: draw ad spots <ArrowRight />
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button asChild variant="outline">
+                  <Link href={`/sell/${listing.id}/edit?step=spots`}>
+                    Next: draw ad spots <ArrowRight />
+                  </Link>
+                </Button>
+              )}
             </div>
           )}
           {step === "spots" && (
