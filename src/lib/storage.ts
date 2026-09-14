@@ -9,7 +9,7 @@ import { MAX_UPLOAD_BYTES } from "@/lib/constants";
  * Swap this module for S3 / R2 / UploadThing when moving off a single box.
  */
 
-export const UPLOAD_ROOT = path.resolve(process.env.UPLOAD_DIR ?? "./data/uploads");
+export const UPLOAD_ROOT = path.resolve(/*turbopackIgnore: true*/ process.env.UPLOAD_DIR ?? "./data/uploads");
 
 export const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
 export const VIDEO_MIMES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
@@ -41,14 +41,14 @@ export async function saveUpload(file: File, folder: string, kind: UploadKind = 
   }
   const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, "");
   const name = `${nanoid(16)}.${EXT_BY_MIME[file.type] ?? "bin"}`;
-  const dir = path.join(UPLOAD_ROOT, safeFolder);
+  const dir = path.join(/*turbopackIgnore: true*/ UPLOAD_ROOT, safeFolder);
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
+  await fs.writeFile(path.join(/*turbopackIgnore: true*/ dir, name), Buffer.from(await file.arrayBuffer()));
   return { url: `/api/files/${safeFolder}/${name}`, mime: file.type, size: file.size };
 }
 
 export function resolveUploadPath(segments: string[]) {
-  const target = path.resolve(UPLOAD_ROOT, ...segments);
+  const target = path.resolve(/*turbopackIgnore: true*/ UPLOAD_ROOT, ...segments);
   if (!target.startsWith(UPLOAD_ROOT + path.sep)) return null;
   return target;
 }
