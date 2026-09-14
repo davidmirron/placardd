@@ -6,6 +6,8 @@ The inspiration is the Token2049 dress auction: 13 logo spots, $350 starting bid
 
 This document covers: what the MVP is, how it should work, what it is built on, and what is intentionally deferred.
 
+> **Launch decision (Sep 2026): fixed price only.** Auctions are fully built (bid rules, anti-sniping, settlement) but switched off behind `NEXT_PUBLIC_AUCTIONS_ENABLED`. Reason: a bid is a promise, not a payment — with no card on file a brand can win every auction and never pay. At launch every spot has one price, "Buy now" goes straight to Stripe/test checkout, and the spot is held for one hour while the brand pays. The "bidding deadline" is now an optional "available until" date. Auctions come back once brands can be required to keep a verified card on file, at which point the doubling rule becomes the viral mechanic it was meant to be. The sections below describe the full design including auctions; anything about bidding applies only when the flag is on.
+
 ---
 
 ## 1. Who it is for
