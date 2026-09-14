@@ -27,5 +27,5 @@
   <!-- seams -->
   <path d="M400 380 L 400 860" stroke="#fff" stroke-opacity="0.08" stroke-width="2"/>
   <path d="M255 560 L 545 560" stroke="#fff" stroke-opacity="0.08" stroke-width="2"/>
-  <text x="400" y="985" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#7c6f64">Front · black column dress</text>
+  <text x="400" y="985" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#7c6f64">Front &#183; black column dress</text>
 </svg>

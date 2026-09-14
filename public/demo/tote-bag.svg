@@ -22,5 +22,5 @@
   <!-- stitching -->
   <path d="M190 350 L 610 350" stroke="#b45309" stroke-opacity="0.35" stroke-width="3" stroke-dasharray="10 8"/>
   <path d="M160 880 L 640 880" stroke="#b45309" stroke-opacity="0.35" stroke-width="3" stroke-dasharray="10 8"/>
-  <text x="400" y="975" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#047857">Canvas tote · 40 × 45 cm print area</text>
+  <text x="400" y="975" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#047857">Canvas tote &#183; 40 &#215; 45 cm print area</text>
 </svg>

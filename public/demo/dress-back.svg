@@ -21,5 +21,5 @@
   <path d="M300 300 L 500 300 C 520 400, 530 480, 545 560 C 570 700, 590 780, 610 860 L 190 860 C 210 780, 230 700, 255 560 C 270 480, 280 400, 300 300 Z" fill="url(#dress)"/>
   <path d="M320 300 C 360 420, 440 420, 480 300 Z" fill="#d8b49a"/>
   <path d="M400 420 L 400 860" stroke="#fff" stroke-opacity="0.08" stroke-width="2"/>
-  <text x="400" y="985" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#7c6f64">Back · open back, full skirt panel</text>
+  <text x="400" y="985" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#7c6f64">Back &#183; open back, full skirt panel</text>
 </svg>
