@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdf2f8"/>
+      <stop offset="1" stop-color="#e9d5ff"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <rect x="0" y="560" width="1200" height="140" fill="#3b3b45"/>
+  <rect x="0" y="560" width="1200" height="6" fill="#52525b"/>
+  <ellipse cx="600" cy="565" rx="520" ry="16" fill="#000" opacity="0.2"/>
+  <!-- body -->
+  <path d="M120 470 C 110 400, 150 380, 220 370 L 330 355 C 420 270, 520 230, 660 230 L 780 230 C 900 230, 980 300, 1030 360 L 1080 372 C 1110 380, 1120 420, 1110 470 Z" fill="url(#body)"/>
+  <path d="M350 355 C 420 285, 510 255, 640 255 L 640 355 Z" fill="#1e293b" opacity="0.85"/>
+  <path d="M670 255 L 780 255 C 880 255, 940 310, 980 355 L 670 355 Z" fill="#1e293b" opacity="0.85"/>
+  <rect x="120" y="440" width="990" height="14" fill="#0f172a" opacity="0.08"/>
+  <!-- door lines -->
+  <path d="M640 260 L 640 470" stroke="#94a3b8" stroke-width="3"/>
+  <path d="M330 358 L 330 470" stroke="#94a3b8" stroke-width="3"/>
+  <path d="M990 360 L 990 470" stroke="#94a3b8" stroke-width="3"/>
+  <!-- handles -->
+  <rect x="560" y="385" width="60" height="12" rx="6" fill="#64748b"/>
+  <rect x="880" y="385" width="60" height="12" rx="6" fill="#64748b"/>
+  <!-- wheels -->
+  <circle cx="320" cy="490" r="82" fill="#0f172a"/>
+  <circle cx="320" cy="490" r="46" fill="#94a3b8"/>
+  <circle cx="320" cy="490" r="18" fill="#334155"/>
+  <circle cx="900" cy="490" r="82" fill="#0f172a"/>
+  <circle cx="900" cy="490" r="46" fill="#94a3b8"/>
+  <circle cx="900" cy="490" r="18" fill="#334155"/>
+  <text x="600" y="660" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#e2e8f0">Driver side · full wrap-ready panels</text>
+</svg>

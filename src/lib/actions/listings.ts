@@ -1,0 +1,264 @@
+"use server";
+
+import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { BID_RULES, LISTING_CATEGORIES, listings, photos, SALE_TYPES, zones } from "@/lib/db/schema";
+import { requireRole } from "@/lib/auth";
+import { dollarsToCents, fieldNumber, fieldString, type ActionState } from "./types";
+
+const listingSchema = z.object({
+  title: z.string().min(4, "Give your listing a clear title.").max(120),
+  description: z.string().max(4000),
+  category: z.enum(LISTING_CATEGORIES),
+  eventName: z.string().max(120),
+  eventDate: z.string(),
+  location: z.string().min(2, "Where will this be seen?").max(120),
+  biddingEndsAt: z.string().min(1, "Set a bidding deadline."),
+  reachInPerson: z.number().min(0),
+  reachSocial: z.number().min(0),
+  includes: z.string().max(2000),
+});
+
+function parseListingForm(form: FormData) {
+  return listingSchema.safeParse({
+    title: fieldString(form, "title"),
+    description: fieldString(form, "description"),
+    category: fieldString(form, "category"),
+    eventName: fieldString(form, "eventName"),
+    eventDate: fieldString(form, "eventDate"),
+    location: fieldString(form, "location"),
+    biddingEndsAt: fieldString(form, "biddingEndsAt"),
+    reachInPerson: fieldNumber(form, "reachInPerson"),
+    reachSocial: fieldNumber(form, "reachSocial"),
+    includes: fieldString(form, "includes"),
+  });
+}
+
+function toDate(value: string) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function ownedListing(listingId: string, userId: string) {
+  const listing = await db.query.listings.findFirst({ where: and(eq(listings.id, listingId), eq(listings.sellerId, userId)) });
+  if (!listing) throw new Error("Listing not found.");
+  return listing;
+}
+
+export async function createListing(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireRole("creator", "/sell/new");
+  const parsed = parseListingForm(form);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const data = parsed.data;
+  const biddingEndsAt = toDate(data.biddingEndsAt);
+  if (!biddingEndsAt || biddingEndsAt.getTime() < Date.now() + 60 * 60 * 1000) {
+    return { error: "The bidding deadline must be at least an hour from now." };
+  }
+
+  const id = nanoid(10);
+  await db.insert(listings).values({
+    id,
+    sellerId: user.id,
+    title: data.title,
+    description: data.description,
+    category: data.category,
+    eventName: data.eventName || null,
+    eventDate: toDate(data.eventDate),
+    location: data.location,
+    biddingEndsAt,
+    reachInPerson: Math.round(data.reachInPerson),
+    reachSocial: Math.round(data.reachSocial),
+    includes: data.includes,
+    status: "draft",
+  });
+  redirect(`/sell/${id}/edit?step=photos`);
+}
+
+export async function updateListing(listingId: string, _prev: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireRole("creator");
+  await ownedListing(listingId, user.id);
+  const parsed = parseListingForm(form);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const data = parsed.data;
+  const biddingEndsAt = toDate(data.biddingEndsAt);
+  if (!biddingEndsAt) return { error: "Set a valid bidding deadline." };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(listings)
+      .set({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        eventName: data.eventName || null,
+        eventDate: toDate(data.eventDate),
+        location: data.location,
+        biddingEndsAt,
+        reachInPerson: Math.round(data.reachInPerson),
+        reachSocial: Math.round(data.reachSocial),
+        includes: data.includes,
+        updatedAt: new Date(),
+      })
+      .where(eq(listings.id, listingId));
+    // Spots without bids follow the listing deadline; spots with bids keep their own clock.
+    await tx
+      .update(zones)
+      .set({ endsAt: biddingEndsAt })
+      .where(and(eq(zones.listingId, listingId), eq(zones.status, "open"), eq(zones.bidCount, 0)));
+  });
+  revalidatePath(`/listings/${listingId}`);
+  revalidatePath(`/sell/${listingId}/edit`);
+  return { success: "Listing details saved." };
+}
+
+const photoSchema = z.object({
+  url: z.string().startsWith("/api/files/"),
+  label: z.string().min(1).max(40),
+  width: z.number().int().min(0),
+  height: z.number().int().min(0),
+});
+
+export async function addPhoto(listingId: string, input: z.infer<typeof photoSchema>) {
+  const user = await requireRole("creator");
+  await ownedListing(listingId, user.id);
+  const data = photoSchema.parse(input);
+  const existing = await db.query.photos.findMany({ where: eq(photos.listingId, listingId), columns: { id: true } });
+  if (existing.length >= 8) throw new Error("A listing can have up to 8 photos.");
+  const id = nanoid(10);
+  await db.insert(photos).values({ id, listingId, ...data, sortOrder: existing.length });
+  revalidatePath(`/sell/${listingId}/edit`);
+  return { id };
+}
+
+export async function removePhoto(listingId: string, photoId: string) {
+  const user = await requireRole("creator");
+  await ownedListing(listingId, user.id);
+  const zoneWithBids = await db.query.zones.findFirst({
+    where: and(eq(zones.photoId, photoId), eq(zones.status, "open")),
+    columns: { bidCount: true },
+  });
+  if (zoneWithBids && zoneWithBids.bidCount > 0) throw new Error("This photo has a spot with active bids and can't be removed.");
+  await db.delete(photos).where(and(eq(photos.id, photoId), eq(photos.listingId, listingId)));
+  revalidatePath(`/sell/${listingId}/edit`);
+}
+
+const zoneInput = z.object({
+  id: z.string().optional(),
+  photoId: z.string(),
+  label: z.string().min(1, "Every spot needs a name.").max(60),
+  description: z.string().max(500),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  w: z.number().min(0.01).max(1),
+  h: z.number().min(0.01).max(1),
+  saleType: z.enum(SALE_TYPES),
+  bidRule: z.enum(BID_RULES),
+  startingPrice: z.number().min(1, "Starting price must be at least $1."),
+  minIncrement: z.number().min(0),
+  buyNowPrice: z.number().nullable(),
+});
+export type ZoneInput = z.infer<typeof zoneInput>;
+
+export async function saveZones(listingId: string, input: ZoneInput[]): Promise<ActionState> {
+  const user = await requireRole("creator");
+  const listing = await ownedListing(listingId, user.id);
+  const parsed = z.array(zoneInput).max(30).safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your spots." };
+
+  const listingPhotos = await db.query.photos.findMany({ where: eq(photos.listingId, listingId), columns: { id: true } });
+  const photoIds = new Set(listingPhotos.map((p) => p.id));
+  if (parsed.data.some((z) => !photoIds.has(z.photoId))) return { error: "One of the spots points at a photo that no longer exists." };
+
+  const existing = await db.query.zones.findMany({ where: eq(zones.listingId, listingId) });
+  const existingById = new Map(existing.map((z) => [z.id, z]));
+  const keepIds = new Set<string>();
+
+  await db.transaction(async (tx) => {
+    let order = 0;
+    for (const z of parsed.data) {
+      const buyNowCents = z.saleType === "auction" && z.buyNowPrice ? dollarsToCents(z.buyNowPrice) : null;
+      const pricing = {
+        saleType: z.saleType,
+        bidRule: z.bidRule,
+        startingPriceCents: dollarsToCents(z.startingPrice),
+        minIncrementCents: dollarsToCents(z.minIncrement || 25),
+        buyNowPriceCents: buyNowCents,
+      };
+      const geometry = { x: z.x, y: z.y, w: z.w, h: z.h, photoId: z.photoId };
+      const copy = { label: z.label, description: z.description, sortOrder: order++ };
+
+      const current = z.id ? existingById.get(z.id) : undefined;
+      if (current) {
+        keepIds.add(current.id);
+        const locked = current.bidCount > 0 || current.status !== "open";
+        await tx
+          .update(zones)
+          .set(locked ? copy : { ...copy, ...geometry, ...pricing })
+          .where(eq(zones.id, current.id));
+      } else {
+        const id = nanoid(10);
+        keepIds.add(id);
+        await tx.insert(zones).values({ id, listingId, ...copy, ...geometry, ...pricing, endsAt: listing.biddingEndsAt });
+      }
+    }
+    const removable = existing.filter((z) => !keepIds.has(z.id) && z.bidCount === 0 && z.status === "open").map((z) => z.id);
+    if (removable.length) await tx.delete(zones).where(inArray(zones.id, removable));
+  });
+
+  const lockedRemoved = existing.filter((z) => !keepIds.has(z.id) && (z.bidCount > 0 || z.status !== "open"));
+  revalidatePath(`/sell/${listingId}/edit`);
+  revalidatePath(`/listings/${listingId}`);
+  return lockedRemoved.length
+    ? { success: "Spots saved. Spots with bids or orders were kept." }
+    : { success: "Spots saved." };
+}
+
+export async function publishListing(listingId: string): Promise<ActionState> {
+  const user = await requireRole("creator");
+  const listing = await ownedListing(listingId, user.id);
+  const [photoCount, zoneCount] = await Promise.all([
+    db.query.photos.findMany({ where: eq(photos.listingId, listingId), columns: { id: true } }),
+    db.query.zones.findMany({ where: eq(zones.listingId, listingId), columns: { id: true } }),
+  ]);
+  if (photoCount.length === 0) return { error: "Add at least one photo before publishing." };
+  if (zoneCount.length === 0) return { error: "Draw at least one ad spot before publishing." };
+  if (listing.biddingEndsAt.getTime() < Date.now()) return { error: "The bidding deadline is in the past. Update it first." };
+
+  await db.update(listings).set({ status: "active", updatedAt: new Date() }).where(eq(listings.id, listingId));
+  revalidatePath("/listings");
+  redirect(`/listings/${listingId}?published=1`);
+}
+
+export async function unpublishListing(listingId: string): Promise<ActionState> {
+  const user = await requireRole("creator");
+  const listing = await ownedListing(listingId, user.id);
+  const withBids = await db.query.zones.findFirst({ where: and(eq(zones.listingId, listingId), eq(zones.status, "open")), columns: { bidCount: true } });
+  if (withBids && withBids.bidCount > 0) return { error: "Spots already have bids. Cancel the listing instead." };
+  await db.update(listings).set({ status: "draft", updatedAt: new Date() }).where(eq(listings.id, listing.id));
+  revalidatePath(`/sell/${listingId}/edit`);
+  return { success: "Listing moved back to draft." };
+}
+
+export async function cancelListing(listingId: string): Promise<ActionState> {
+  const user = await requireRole("creator");
+  await ownedListing(listingId, user.id);
+  await db.transaction(async (tx) => {
+    await tx.update(listings).set({ status: "cancelled", updatedAt: new Date() }).where(eq(listings.id, listingId));
+    await tx.update(zones).set({ status: "cancelled" }).where(and(eq(zones.listingId, listingId), eq(zones.status, "open")));
+  });
+  revalidatePath(`/listings/${listingId}`);
+  redirect("/dashboard");
+}
+
+export async function deleteDraft(listingId: string): Promise<ActionState> {
+  const user = await requireRole("creator");
+  const listing = await ownedListing(listingId, user.id);
+  if (listing.status !== "draft") return { error: "Only drafts can be deleted." };
+  await db.delete(listings).where(and(eq(listings.id, listingId), notInArray(listings.status, ["active", "ended"])));
+  redirect("/dashboard");
+}

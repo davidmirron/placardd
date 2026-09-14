@@ -1,0 +1,52 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { AuctionError, buyNow, placeBid } from "@/lib/auctions";
+import { formatMoney } from "@/lib/format";
+import { dollarsToCents, fieldString, type ActionState } from "./types";
+
+async function requireBrand(listingId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent(`/listings/${listingId}`)}`);
+  if (user.role !== "brand") return { user, error: "Only brand accounts can bid. Create a brand account to take part." };
+  return { user, error: undefined };
+}
+
+export async function placeBidAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const zoneId = fieldString(form, "zoneId");
+  const listingId = fieldString(form, "listingId");
+  const { user, error } = await requireBrand(listingId);
+  if (error) return { error };
+  const amountCents = dollarsToCents(fieldString(form, "amount"));
+
+  try {
+    const result = await placeBid(zoneId, user.id, amountCents);
+    revalidatePath(`/listings/${listingId}`);
+    if (result.kind === "won") redirect(`/orders/${result.orderId}?won=1`);
+    return {
+      success: result.extended
+        ? `You're the highest bidder at ${formatMoney(result.amountCents)}. Auction extended by 5 minutes.`
+        : `You're the highest bidder at ${formatMoney(result.amountCents)}.`,
+    };
+  } catch (err) {
+    if (err instanceof AuctionError) return { error: err.message };
+    throw err;
+  }
+}
+
+export async function buyNowAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const zoneId = fieldString(form, "zoneId");
+  const listingId = fieldString(form, "listingId");
+  const { user, error } = await requireBrand(listingId);
+  if (error) return { error };
+  try {
+    const { orderId } = await buyNow(zoneId, user.id);
+    revalidatePath(`/listings/${listingId}`);
+    redirect(`/orders/${orderId}?won=1`);
+  } catch (err) {
+    if (err instanceof AuctionError) return { error: err.message };
+    throw err;
+  }
+}

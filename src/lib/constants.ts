@@ -1,0 +1,56 @@
+import type { BidRule, ListingCategory, OrderStatus, SaleType } from "@/lib/db/schema";
+
+export const APP_NAME = "Placard";
+export const APP_TAGLINE = "Sell the space you already carry.";
+
+export const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT ?? 15);
+
+/** Bids placed inside this window extend the auction by the same amount. */
+export const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
+
+/** Unpaid orders are cancelled after this long (enforced lazily on read). */
+export const PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+export const CATEGORY_LABELS: Record<ListingCategory, string> = {
+  outfit: "Outfit & body",
+  vehicle: "Vehicle",
+  accessory: "Bag & accessories",
+  space: "Booth & physical space",
+  other: "Other",
+};
+
+export const CATEGORY_DESCRIPTIONS: Record<ListingCategory, string> = {
+  outfit: "Dresses, jerseys, jackets, race kits, hats, temporary tattoos",
+  vehicle: "Cars, bikes, vans, boats, helmets",
+  accessory: "Bags, laptops, phone cases, water bottles",
+  space: "Booth walls, signage, banners, apartment windows",
+  other: "Anything else that will be seen",
+};
+
+export const SALE_TYPE_LABELS: Record<SaleType, string> = {
+  auction: "Auction",
+  buy_now: "Buy now",
+};
+
+export const BID_RULE_LABELS: Record<BidRule, string> = {
+  increment: "Minimum increment",
+  doubling: "Doubling bids",
+};
+
+export const BID_RULE_DESCRIPTIONS: Record<BidRule, string> = {
+  increment: "Each new bid must beat the current bid by at least the minimum step.",
+  doubling: "Each new bid must be at least double the current bid. Fast and dramatic — the Token2049 rule.",
+};
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending_payment: "Awaiting payment",
+  paid: "Paid · awaiting proof",
+  proof_submitted: "Proof submitted",
+  completed: "Completed",
+  disputed: "Disputed",
+  cancelled: "Cancelled",
+};
+
+export const PHOTO_LABELS = ["Front", "Back", "Left side", "Right side", "Detail", "Context"] as const;

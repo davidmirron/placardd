@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0f2fe"/>
+      <stop offset="1" stop-color="#bae6fd"/>
+    </linearGradient>
+    <linearGradient id="kit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <ellipse cx="400" cy="965" rx="220" ry="20" fill="#000" opacity="0.08"/>
+  <!-- legs -->
+  <rect x="330" y="680" width="60" height="260" rx="26" fill="#c98f6b"/>
+  <rect x="410" y="680" width="60" height="260" rx="26" fill="#c98f6b"/>
+  <rect x="322" y="900" width="76" height="40" rx="14" fill="#0f172a"/>
+  <rect x="402" y="900" width="76" height="40" rx="14" fill="#0f172a"/>
+  <!-- arms -->
+  <path d="M290 330 C 240 400, 230 480, 250 560 L 292 550 C 285 490, 300 420, 330 370 Z" fill="#c98f6b"/>
+  <path d="M510 330 C 560 400, 570 480, 550 560 L 508 550 C 515 490, 500 420, 470 370 Z" fill="#c98f6b"/>
+  <!-- head -->
+  <rect x="372" y="215" width="56" height="60" rx="20" fill="#c98f6b"/>
+  <circle cx="400" cy="170" r="66" fill="#c98f6b"/>
+  <path d="M334 165 C 340 100, 460 100, 466 165 L 466 150 C 440 120, 360 120, 334 150 Z" fill="#111827"/>
+  <!-- shorts -->
+  <path d="M300 600 L 500 600 L 515 720 L 410 730 L 400 690 L 390 730 L 285 720 Z" fill="#0f172a"/>
+  <!-- singlet -->
+  <path d="M290 330 L 340 300 C 360 340, 440 340, 460 300 L 510 330 C 500 420, 495 520, 500 610 L 300 610 C 305 520, 300 420, 290 330 Z" fill="url(#kit)"/>
+  <path d="M340 300 C 360 340, 440 340, 460 300 L 470 320 C 440 370, 360 370, 330 320 Z" fill="#c2410c"/>
+  <!-- bib -->
+  <rect x="330" y="440" width="140" height="90" rx="6" fill="#fff"/>
+  <text x="400" y="503" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="52" fill="#0f172a">4127</text>
+  <text x="400" y="985" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#0369a1">Race kit · singlet, shorts, bib</text>
+</svg>
