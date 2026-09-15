@@ -25,11 +25,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             Create an account
           </Link>
         </p>
-        <div className="rounded-xl border bg-muted/40 p-4 text-xs text-muted-foreground">
-          <p className="mb-1 font-medium text-foreground">Demo accounts (password: password123)</p>
-          <p>Creator: vanessa@demo.placard.app</p>
-          <p>Brand: kite@demo.placard.app</p>
-        </div>
       </div>
     </div>
   );
