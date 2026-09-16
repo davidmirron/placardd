@@ -1,8 +1,15 @@
-import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, type Db } from "@/lib/db";
-import { bids, listings, orders, zones, type Zone } from "@/lib/db/schema";
-import { ANTI_SNIPE_WINDOW_MS, AUCTION_PAYMENT_WINDOW_MS, AUCTIONS_ENABLED, BUY_NOW_HOLD_MS } from "@/lib/constants";
+import { bids, listings, orders, reviews, zones, type Zone } from "@/lib/db/schema";
+import {
+  ANTI_SNIPE_WINDOW_MS,
+  AUCTION_PAYMENT_WINDOW_MS,
+  AUCTIONS_ENABLED,
+  BUY_NOW_HOLD_MS,
+  PROOF_REVIEW_WINDOW_MS,
+  REVIEW_REVEAL_WINDOW_MS,
+} from "@/lib/constants";
 import { splitAmount } from "@/lib/money";
 
 export class AuctionError extends Error {}
@@ -117,7 +124,7 @@ export async function buyNow(zoneId: string, buyerId: string) {
  */
 export async function settleExpired(listingId?: string) {
   const now = new Date();
-  const summary = { ordersCreated: 0, zonesUnsold: 0, listingsEnded: 0, ordersExpired: 0 };
+  const summary = { ordersCreated: 0, zonesUnsold: 0, listingsEnded: 0, ordersExpired: 0, proofsAutoApproved: 0, reviewsRevealed: 0 };
 
   await db.transaction(async (tx) => {
     const expired = await tx.query.zones.findMany({
@@ -152,8 +159,32 @@ export async function settleExpired(listingId?: string) {
     if (stale.length) {
       const ids = stale.map((o) => o.id);
       await tx.update(orders).set({ status: "cancelled" }).where(inArray(orders.id, ids));
-      await tx.update(zones).set({ status: "unsold" }).where(inArray(zones.id, stale.map((o) => o.zoneId)));
+      for (const o of stale) await releaseZone(tx, o.zoneId, now);
       summary.ordersExpired += ids.length;
+    }
+
+    // Proof the brand never responded to is approved automatically once the review window closes.
+    const unanswered = await tx
+      .update(orders)
+      .set({ status: "completed", completedAt: now })
+      .where(
+        and(
+          eq(orders.status, "proof_submitted"),
+          lt(orders.proofSubmittedAt, new Date(now.getTime() - PROOF_REVIEW_WINDOW_MS)),
+          listingId ? eq(orders.listingId, listingId) : undefined,
+        ),
+      )
+      .returning({ id: orders.id });
+    summary.proofsAutoApproved += unanswered.length;
+
+    // Sealed reviews whose counterpart never showed up are revealed after the window.
+    if (!listingId) {
+      const revealed = await tx
+        .update(reviews)
+        .set({ publishedAt: now })
+        .where(and(isNull(reviews.publishedAt), lt(reviews.createdAt, new Date(now.getTime() - REVIEW_REVEAL_WINDOW_MS))))
+        .returning({ id: reviews.id });
+      summary.reviewsRevealed += revealed.length;
     }
 
     // A listing is over when its deadline passed and no zone is still open.
@@ -169,4 +200,18 @@ export async function settleExpired(listingId?: string) {
   });
 
   return summary;
+}
+
+/**
+ * Puts a zone back on sale after its order fell through (unpaid hold, refund). If the listing has already
+ * closed the zone is marked unsold instead so it can't be bought after the deadline.
+ */
+export async function releaseZone(tx: Tx, zoneId: string, now = new Date()) {
+  const zone = await tx.query.zones.findFirst({ where: eq(zones.id, zoneId), with: { listing: { columns: { status: true } } } });
+  if (!zone) return;
+  const canRelist = zone.listing.status === "active" && zone.endsAt.getTime() > now.getTime();
+  await tx
+    .update(zones)
+    .set({ status: canRelist ? "open" : "unsold", currentBidCents: null, currentBidderId: null })
+    .where(eq(zones.id, zoneId));
 }

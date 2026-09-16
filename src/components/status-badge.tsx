@@ -9,6 +9,7 @@ const ORDER_STYLES: Record<OrderStatus, string> = {
   proof_submitted: "bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200",
   completed: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
   disputed: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  refunded: "bg-muted text-muted-foreground",
   cancelled: "bg-muted text-muted-foreground",
 };
 

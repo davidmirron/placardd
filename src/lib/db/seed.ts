@@ -434,6 +434,7 @@ export async function seed() {
         rating: 5,
         comment: "Dev sent proof photos from the hall within a day of the event and the recap thread did 60K impressions. Would sponsor again.",
         createdAt: new Date(now - 27 * DAY),
+        publishedAt: new Date(now - 26 * DAY),
       },
       {
         id: "r_eth_2",
@@ -443,17 +444,21 @@ export async function seed() {
         rating: 5,
         comment: "Assets arrived print-ready, paid instantly, easy to work with.",
         createdAt: new Date(now - 26 * DAY),
+        publishedAt: new Date(now - 26 * DAY),
       },
     ]);
   }
 
-  // A conversation about the dress.
+  // A conversation about the dress. Kite has read everything; Vanessa hasn't opened Kite's last message yet,
+  // so her account shows one unread on first login.
   await db.insert(conversations).values({
     id: "c_dress_kite",
     listingId: "l_token2049_dress",
     participantAId: u.kite,
     participantBId: u.vanessa,
     lastMessageAt: new Date(now - 5 * HOUR),
+    participantAReadAt: new Date(now - 5 * HOUR),
+    participantBReadAt: new Date(now - 28 * HOUR),
     createdAt: new Date(now - 30 * HOUR),
   });
   await db.insert(messages).values([

@@ -38,9 +38,13 @@ export const ORDER_STATUSES = [
   "proof_submitted",
   "completed",
   "disputed",
+  "refunded",
   "cancelled",
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+/** Orders in these states no longer hold their zone, so the zone can be sold again. */
+export const RELEASED_ORDER_STATUSES: readonly OrderStatus[] = ["cancelled", "refunded"];
 
 const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
 const now = sql`(unixepoch('subsec') * 1000)`;
@@ -180,6 +184,9 @@ export const orders = sqliteTable(
     paymentRef: text("payment_ref"),
     brandNotes: text("brand_notes").notNull().default(""),
     disputeReason: text("dispute_reason"),
+    disputedAt: timestamp("disputed_at"),
+    refundRef: text("refund_ref"),
+    refundedAt: timestamp("refunded_at"),
     paidAt: timestamp("paid_at"),
     proofSubmittedAt: timestamp("proof_submitted_at"),
     completedAt: timestamp("completed_at"),
@@ -188,7 +195,11 @@ export const orders = sqliteTable(
   (t) => [
     index("orders_buyer_idx").on(t.buyerId),
     index("orders_seller_idx").on(t.sellerId),
-    uniqueIndex("orders_zone_idx").on(t.zoneId),
+    // A zone can only have one live order at a time; released orders (expired holds, refunds) keep their row
+    // for the record but no longer block a resale.
+    uniqueIndex("orders_zone_live_idx")
+      .on(t.zoneId)
+      .where(sql`status NOT IN ('cancelled', 'refunded')`),
   ],
 );
 
@@ -226,6 +237,9 @@ export const reviews = sqliteTable(
       .references(() => users.id),
     rating: integer("rating").notNull(),
     comment: text("comment").notNull().default(""),
+    // Reviews are double-blind: hidden from everyone but the author until both sides have posted,
+    // or until the reveal window runs out. Null means still sealed.
+    publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").notNull().default(now),
   },
   (t) => [uniqueIndex("reviews_order_author_idx").on(t.orderId, t.authorId), index("reviews_target_idx").on(t.targetId)],
@@ -243,6 +257,9 @@ export const conversations = sqliteTable(
       .notNull()
       .references(() => users.id),
     lastMessageAt: timestamp("last_message_at").notNull().default(now),
+    // Read receipts: when each participant last opened the thread. Messages newer than this are unread.
+    participantAReadAt: timestamp("participant_a_read_at"),
+    participantBReadAt: timestamp("participant_b_read_at"),
     createdAt: timestamp("created_at").notNull().default(now),
   },
   (t) => [index("conversations_a_idx").on(t.participantAId), index("conversations_b_idx").on(t.participantBId)],
@@ -287,7 +304,7 @@ export const zonesRelations = relations(zones, ({ one, many }) => ({
   photo: one(photos, { fields: [zones.photoId], references: [photos.id] }),
   currentBidder: one(users, { fields: [zones.currentBidderId], references: [users.id] }),
   bids: many(bids),
-  order: one(orders, { fields: [zones.id], references: [orders.zoneId] }),
+  orders: many(orders),
 }));
 
 export const bidsRelations = relations(bids, ({ one }) => ({
