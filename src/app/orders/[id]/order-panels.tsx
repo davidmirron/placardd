@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileGrid } from "@/components/file-grid";
 import { FileUploader, type UploadedFile } from "@/components/file-uploader";
 import { FormMessage, SubmitButton } from "@/components/form-bits";
-import { approveProof, attachOrderFile, disputeOrder, leaveReview, refundOrder, saveBrandNotes, startCheckout, submitProof } from "@/lib/actions/orders";
+import { approveProof, attachOrderFile, disputeOrder, leaveReview, refundOrder, removeOrderFile, saveBrandNotes, startCheckout, submitProof } from "@/lib/actions/orders";
 import type { ActionState } from "@/lib/actions/types";
 import { PROOF_REVIEW_WINDOW_DAYS, REVIEW_REVEAL_WINDOW_DAYS, SUPPORT_EMAIL } from "@/lib/constants";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -102,6 +102,7 @@ export function AssetsPanel({ orderId, isBuyer, editable, notes, assets }: { ord
 export function ProofPanel({ orderId, proofs, disputed }: { orderId: string; proofs: FileView[]; disputed?: boolean }) {
   const { state, pending, run, router } = useRunner();
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [removing, startRemove] = useTransition();
 
   const onUploaded = async (file: UploadedFile) => {
     setUploadError(null);
@@ -111,6 +112,18 @@ export function ProofPanel({ orderId, proofs, disputed }: { orderId: string; pro
     } catch (err) {
       setUploadError((err as Error).message);
     }
+  };
+
+  const onRemove = (fileId: string) => {
+    setUploadError(null);
+    startRemove(async () => {
+      try {
+        await removeOrderFile(orderId, fileId);
+        router.refresh();
+      } catch (err) {
+        setUploadError((err as Error).message);
+      }
+    });
   };
 
   return (
@@ -123,11 +136,11 @@ export function ProofPanel({ orderId, proofs, disputed }: { orderId: string; pro
             : `Photos or video of the logo in place at the event. The brand has ${PROOF_REVIEW_WINDOW_DAYS} days to approve; if they don't respond, your payout is released automatically.`}
         </p>
       </div>
-      {proofs.length > 0 && <FileGrid files={proofs} />}
+      {proofs.length > 0 && <FileGrid files={proofs} onRemove={onRemove} removing={removing} />}
       <FileUploader folder="proofs" kind="media" multiple label="Add proof photos or video" hint="Images or MP4/MOV/WEBM up to 25MB each" onUploaded={onUploaded} />
       {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
       <div className="flex items-center gap-3">
-        <Button disabled={pending || proofs.length === 0} onClick={() => run(() => submitProof(orderId))}>
+        <Button disabled={pending || removing || proofs.length === 0} onClick={() => run(() => submitProof(orderId))}>
           <BadgeCheck /> {disputed ? "Resubmit proof" : "Submit proof for approval"}
         </Button>
         <FormMessage state={state} />

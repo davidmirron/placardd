@@ -9,6 +9,7 @@ import { orderFiles, orders, reviews } from "@/lib/db/schema";
 import { releaseZone } from "@/lib/auctions";
 import { requireUser } from "@/lib/auth";
 import { activeProvider, createCheckoutUrl, markOrderPaid, refundPayment } from "@/lib/payments";
+import { deleteUpload } from "@/lib/storage";
 import { fieldNumber, fieldString, type ActionState } from "./types";
 
 async function loadOrder(orderId: string, userId: string) {
@@ -70,6 +71,28 @@ export async function attachOrderFile(orderId: string, input: { url: string; mim
     mime: input.mime,
     note: (input.note ?? "").slice(0, 500),
   });
+  revalidatePath(`/orders/${orderId}`);
+}
+
+/**
+ * Creator can pull a proof file before (re)submitting — a photo uploaded by mistake
+ * shouldn't have to go to the brand. Once proof is submitted the set is frozen until
+ * the brand flags an issue.
+ */
+export async function removeOrderFile(orderId: string, fileId: string) {
+  const user = await requireUser();
+  const { order, isSeller } = await loadOrder(orderId, user.id);
+  const file = await db.query.orderFiles.findFirst({
+    where: and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, orderId)),
+  });
+  if (!file) throw new Error("File not found.");
+  if (file.kind !== "proof") throw new Error("Only proof files can be removed here.");
+  if (!isSeller) throw new Error("Only the creator can remove proof.");
+  if (order.status !== "paid" && order.status !== "disputed") {
+    throw new Error("Proof can only be removed before you send it for approval.");
+  }
+  await db.delete(orderFiles).where(and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, orderId)));
+  await deleteUpload(file.url);
   revalidatePath(`/orders/${orderId}`);
 }
 

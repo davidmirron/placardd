@@ -53,6 +53,16 @@ export function resolveUploadPath(segments: string[]) {
   return target;
 }
 
+/** Best-effort disk cleanup for a `/api/files/...` URL. Missing files are ignored. */
+export async function deleteUpload(url: string) {
+  const prefix = "/api/files/";
+  if (!url.startsWith(prefix)) return;
+  const segments = url.slice(prefix.length).split("/").filter(Boolean);
+  const target = resolveUploadPath(segments);
+  if (!target) return;
+  await fs.unlink(target).catch(() => undefined);
+}
+
 export function mimeForPath(p: string) {
   const ext = path.extname(p).slice(1).toLowerCase();
   const entry = Object.entries(EXT_BY_MIME).find(([, e]) => e === ext);
