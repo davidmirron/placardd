@@ -128,7 +128,9 @@ export default async function ProfilePage({ params }: PageProps<"/u/[handle]">) 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Reviews</h2>
         {reviews.length === 0 ? (
-          <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">No reviews yet. Reviews are written after an order is completed.</p>
+          <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+            No public reviews yet. Reviews are written after an order is completed and go public once both sides have posted.
+          </p>
         ) : (
           <ul className="grid gap-4 md:grid-cols-2">
             {reviews.map((r) => (

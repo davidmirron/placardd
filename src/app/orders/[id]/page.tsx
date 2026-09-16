@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "@/components/status-badge";
+import { ProtectedByPlacard } from "@/components/protected-by-placard";
 import { UserAvatar } from "@/components/user-avatar";
 import { ZoneOverlay } from "@/components/zone-overlay";
 import { FileGrid } from "@/components/file-grid";
-import { AssetsPanel, DisputeForm, PayPanel, ProofPanel, ReviewPanel, ReviewProofPanel } from "./order-panels";
+import { AssetsPanel, DisputePanel, FlagIssueLink, PayPanel, ProofPanel, ProofSentPanel, RefundForm, ReviewPanel, ReviewProofPanel } from "./order-panels";
 import { requireUser } from "@/lib/auth";
 import { startConversation } from "@/lib/actions/messages";
-import { ORDER_STATUS_LABELS, PLATFORM_FEE_PERCENT } from "@/lib/constants";
+import { ORDER_STATUS_LABELS, PROOF_REVIEW_WINDOW_MS } from "@/lib/constants";
 import type { OrderStatus } from "@/lib/db/schema";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { activeProvider, confirmStripeSession } from "@/lib/payments";
@@ -32,12 +33,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
 
   const isBuyer = order.buyerId === user.id;
   const counterpart = isBuyer ? order.seller : order.buyer;
+  const counterpartName = counterpart.companyName ?? counterpart.name;
   const assets = order.files.filter((f) => f.kind === "asset");
   const proofs = order.files.filter((f) => f.kind === "proof");
   const myReview = order.reviews.find((r) => r.authorId === user.id);
   const theirReview = order.reviews.find((r) => r.authorId !== user.id);
   const stageIndex = TIMELINE.indexOf(order.status);
+  const reviewDeadline = order.proofSubmittedAt ? new Date(order.proofSubmittedAt.getTime() + PROOF_REVIEW_WINDOW_MS) : null;
   const message = startConversation.bind(null, counterpart.id, order.listingId);
+  const closed = order.status === "cancelled" || order.status === "refunded";
 
   return (
     <div className="container-page max-w-5xl space-y-8 py-10">
@@ -51,7 +55,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
           Payment received. Placard holds the funds until you approve proof of delivery.
         </div>
       )}
-      {sp.cancelled && (
+      {sp.cancelled && order.status === "pending_payment" && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Checkout was cancelled. The spot is held for you for a short while — pay below to keep it, or it goes back on sale.
         </div>
@@ -82,7 +86,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
         <OrderStatusBadge status={order.status} className="h-7 px-3 text-sm" />
       </header>
 
-      {order.status !== "cancelled" && order.status !== "disputed" && (
+      {!closed && order.status !== "disputed" && (
         <ol className="grid grid-cols-4 gap-2">
           {TIMELINE.map((s, i) => (
             <li key={s} className="space-y-1.5">
@@ -92,25 +96,48 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
           ))}
         </ol>
       )}
-      {order.status === "disputed" && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-          <p className="font-medium">Issue flagged by the brand</p>
-          <p className="mt-1">{order.disputeReason}</p>
-          <p className="mt-2 text-xs opacity-80">The seller can upload additional proof and resubmit. Payout is paused until resolved.</p>
+
+      {order.status === "refunded" && (
+        <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+          <p className="font-medium">This order was refunded {formatDate(order.refundedAt)}.</p>
+          <p className="mt-1 text-muted-foreground">
+            {isBuyer
+              ? `${formatMoney(order.amountCents)} has been returned to your original payment method. Refunds usually show up within 5–10 business days.`
+              : `${formatMoney(order.amountCents)} was returned to ${counterpartName}. The spot went back on sale if the listing was still open.`}
+          </p>
+          {order.disputeReason && <p className="mt-2 text-muted-foreground whitespace-pre-line">{order.disputeReason}</p>}
         </div>
+      )}
+      {order.status === "cancelled" && (
+        <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">This order was cancelled before payment. No money changed hands and the spot went back on sale.</div>
       )}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-8">
           {isBuyer && order.status === "pending_payment" && <PayPanel orderId={order.id} amountCents={order.amountCents} provider={activeProvider()} />}
           {!isBuyer && order.status === "pending_payment" && (
-            <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-              Waiting for {counterpart.companyName ?? counterpart.name} to pay. You&apos;ll be able to upload proof once payment lands.
-            </div>
+            <div className="rounded-2xl border p-5 text-sm text-muted-foreground">Waiting for {counterpartName} to pay. You&apos;ll be able to upload proof once payment lands.</div>
           )}
 
-          {!isBuyer && (order.status === "paid" || order.status === "disputed") && <ProofPanel orderId={order.id} proofs={proofs.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))} />}
-          {isBuyer && order.status === "proof_submitted" && <ReviewProofPanel orderId={order.id} />}
+          {order.status === "disputed" && (
+            <DisputePanel
+              orderId={order.id}
+              isBuyer={isBuyer}
+              reason={order.disputeReason ?? ""}
+              flaggedAt={order.disputedAt}
+              counterpartName={counterpartName}
+              amountCents={order.amountCents}
+              messageAction={message}
+            />
+          )}
+
+          {!isBuyer && (order.status === "paid" || order.status === "disputed") && (
+            <ProofPanel orderId={order.id} proofs={proofs.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))} disputed={order.status === "disputed"} />
+          )}
+          {!isBuyer && order.status === "proof_submitted" && order.proofSubmittedAt && reviewDeadline && (
+            <ProofSentPanel submittedAt={order.proofSubmittedAt} deadline={reviewDeadline} brandName={counterpartName} payoutCents={order.sellerNetCents} />
+          )}
+          {isBuyer && order.status === "proof_submitted" && reviewDeadline && <ReviewProofPanel orderId={order.id} deadline={reviewDeadline} creatorName={counterpartName} />}
 
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">The spot</h2>
@@ -142,57 +169,71 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
           <AssetsPanel
             orderId={order.id}
             isBuyer={isBuyer}
-            editable={order.status !== "cancelled" && order.status !== "completed"}
+            editable={!closed && order.status !== "completed"}
             notes={order.brandNotes}
             assets={assets.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))}
           />
 
-          {proofs.length > 0 && (isBuyer || order.status !== "paid") && (
+          {proofs.length > 0 && (isBuyer || (order.status !== "paid" && order.status !== "disputed")) && (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold">Proof of delivery</h2>
               <FileGrid files={proofs.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))} />
               {order.proofSubmittedAt && <p className="text-xs text-muted-foreground">Submitted {formatDateTime(order.proofSubmittedAt)}</p>}
-              {isBuyer && order.status === "proof_submitted" && <DisputeForm orderId={order.id} />}
             </section>
           )}
 
           {order.status === "completed" && (
             <ReviewPanel
               orderId={order.id}
-              counterpartName={counterpart.companyName ?? counterpart.name}
-              myReview={myReview ? { rating: myReview.rating, comment: myReview.comment } : null}
-              theirReview={theirReview ? { rating: theirReview.rating, comment: theirReview.comment } : null}
+              counterpartName={counterpartName}
+              myReview={myReview ? { rating: myReview.rating, comment: myReview.comment, published: !!myReview.publishedAt } : null}
+              theirReview={theirReview ? { rating: theirReview.rating, comment: theirReview.comment, published: !!theirReview.publishedAt } : null}
             />
           )}
+
+          {/* Quiet exits: a brand can raise a problem before proof exists; a creator can always give the money back. */}
+          {(isBuyer && order.status === "paid") || (!isBuyer && ["paid", "proof_submitted", "disputed"].includes(order.status)) ? (
+            <div className="border-t pt-4">
+              {isBuyer ? (
+                <FlagIssueLink orderId={order.id} />
+              ) : (
+                <RefundForm orderId={order.id} amountCents={order.amountCents} brandName={counterpartName} disputed={order.status === "disputed"} />
+              )}
+            </div>
+          ) : null}
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-2xl border p-5 text-sm">
             <h3 className="mb-3 font-semibold">Payment</h3>
             <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">{isBuyer ? "You pay" : "Brand paid"}</dt>
-                <dd className="font-medium tabular-nums">{formatMoney(order.amountCents)}</dd>
-              </div>
-              {!isBuyer && (
+              {isBuyer ? (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{order.status === "pending_payment" ? "You pay" : order.status === "refunded" ? "Refunded" : "You paid"}</dt>
+                  <dd className="font-semibold tabular-nums">{formatMoney(order.amountCents)}</dd>
+                </div>
+              ) : (
                 <>
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Placard fee ({PLATFORM_FEE_PERCENT}%)</dt>
-                    <dd className="tabular-nums">−{formatMoney(order.feeCents)}</dd>
+                    <dt className="text-muted-foreground">{order.status === "pending_payment" ? "Brand pays" : order.status === "refunded" ? "Refunded to brand" : "Brand paid"}</dt>
+                    <dd className="tabular-nums">{formatMoney(order.amountCents)}</dd>
                   </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <dt className="font-medium">You receive</dt>
-                    <dd className="font-semibold tabular-nums">{formatMoney(order.sellerNetCents)}</dd>
-                  </div>
+                  {order.status !== "refunded" && order.status !== "cancelled" && (
+                    <div className="flex justify-between border-t pt-2">
+                      <dt className="font-medium">{order.status === "completed" ? "You earned" : "You earn"}</dt>
+                      <dd className="font-semibold tabular-nums">{formatMoney(order.sellerNetCents)}</dd>
+                    </div>
+                  )}
                 </>
               )}
             </dl>
             <p className="mt-3 text-xs text-muted-foreground">
               {order.status === "pending_payment" && "Awaiting payment."}
-              {order.status === "paid" && `Paid ${formatDateTime(order.paidAt)}. Held until proof is approved.`}
-              {order.status === "proof_submitted" && "Held until the brand approves proof."}
+              {order.status === "paid" && `Paid ${formatDateTime(order.paidAt)}. Held by Placard until proof is approved.`}
+              {order.status === "proof_submitted" && reviewDeadline && `Held by Placard. Releases when ${isBuyer ? "you approve" : "the brand approves"}, or automatically on ${formatDate(reviewDeadline)}.`}
               {order.status === "completed" && `Released ${formatDateTime(order.completedAt)}.`}
-              {order.status === "disputed" && "Held pending review."}
+              {order.status === "disputed" && "On hold while the issue is open."}
+              {order.status === "refunded" && `Refunded ${formatDateTime(order.refundedAt)}.`}
               {order.status === "cancelled" && "No payment was taken."}
             </p>
           </div>
@@ -203,7 +244,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
               <UserAvatar name={counterpart.name} avatarUrl={counterpart.avatarUrl} />
               <div className="min-w-0">
                 <Link href={`/u/${counterpart.handle}`} className="block truncate font-medium hover:underline">
-                  {counterpart.companyName ?? counterpart.name}
+                  {counterpartName}
                 </Link>
                 <p className="truncate text-xs text-muted-foreground">{counterpart.companyName ? counterpart.name : `@${counterpart.handle}`}</p>
               </div>
@@ -214,6 +255,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
               </Button>
             </form>
           </div>
+
+          <ProtectedByPlacard audience={isBuyer ? "brand" : "creator"} />
         </aside>
       </div>
     </div>

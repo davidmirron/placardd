@@ -64,6 +64,22 @@ export async function markOrderPaid(orderId: string, provider: PaymentProvider, 
   });
 }
 
+/**
+ * Returns the brand's money. With Stripe this refunds the original PaymentIntent in full; in test mode
+ * it just records a reference. Returns the provider's refund id so it can be stored on the order.
+ */
+export async function refundPayment(order: Pick<Order, "id" | "paymentProvider" | "paymentRef" | "amountCents">): Promise<string> {
+  if (order.paymentProvider !== "stripe") return `test_refund_${order.id}`;
+  if (!order.paymentRef) throw new Error("This order has no payment reference to refund.");
+  const refund = order.paymentRef.startsWith("pi_")
+    ? await stripe().refunds.create({ payment_intent: order.paymentRef, metadata: { orderId: order.id } })
+    : await stripe().refunds.create({
+        payment_intent: (await stripe().checkout.sessions.retrieve(order.paymentRef)).payment_intent as string,
+        metadata: { orderId: order.id },
+      });
+  return refund.id;
+}
+
 /** Used on the success redirect as a fallback when webhooks are not reachable (e.g. local dev). */
 export async function confirmStripeSession(sessionId: string) {
   if (activeProvider() !== "stripe") return;

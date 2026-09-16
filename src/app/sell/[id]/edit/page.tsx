@@ -11,6 +11,7 @@ import { PhotoManager } from "./photo-manager";
 import { PublishPanel } from "./publish-panel";
 import { saveZones, updateListing } from "@/lib/actions/listings";
 import { getCurrentUser } from "@/lib/auth";
+import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { listings, photos, zones } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
@@ -132,6 +133,7 @@ export default async function EditListingPage({ params, searchParams }: PageProp
               photos={listingPhotos.map((p) => ({ id: p.id, url: p.url, label: p.label, width: p.width, height: p.height }))}
               initialZones={editorZones}
               onSave={saveZones.bind(null, listing.id)}
+              feePercent={PLATFORM_FEE_PERCENT}
             />
           )}
         </div>

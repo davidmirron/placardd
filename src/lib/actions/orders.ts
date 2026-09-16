@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { orderFiles, orders, reviews } from "@/lib/db/schema";
+import { releaseZone } from "@/lib/auctions";
 import { requireUser } from "@/lib/auth";
-import { activeProvider, createCheckoutUrl, markOrderPaid } from "@/lib/payments";
+import { activeProvider, createCheckoutUrl, markOrderPaid, refundPayment } from "@/lib/payments";
 import { fieldNumber, fieldString, type ActionState } from "./types";
 
 async function loadOrder(orderId: string, userId: string) {
@@ -88,10 +89,11 @@ export async function approveProof(orderId: string): Promise<ActionState> {
   const user = await requireUser();
   const { order, isBuyer } = await loadOrder(orderId, user.id);
   if (!isBuyer) return { error: "Only the brand can approve proof." };
-  if (order.status !== "proof_submitted") return { error: "There's no proof to approve yet." };
-  await db.update(orders).set({ status: "completed", completedAt: new Date() }).where(eq(orders.id, orderId));
+  // A brand can also close out an issue they flagged once the creator has put it right.
+  if (order.status !== "proof_submitted" && order.status !== "disputed") return { error: "There's no proof to approve yet." };
+  await db.update(orders).set({ status: "completed", completedAt: new Date(), disputeReason: null }).where(eq(orders.id, orderId));
   revalidatePath(`/orders/${orderId}`);
-  return { success: "Proof approved. Payout released to the seller." };
+  return { success: order.status === "disputed" ? "Issue resolved. Payout released to the creator." : "Proof approved. Payout released to the creator." };
 }
 
 export async function disputeOrder(orderId: string, _prev: ActionState, form: FormData): Promise<ActionState> {
@@ -101,9 +103,39 @@ export async function disputeOrder(orderId: string, _prev: ActionState, form: Fo
   if (order.status !== "proof_submitted" && order.status !== "paid") return { error: "This order can't be disputed right now." };
   const reason = fieldString(form, "reason");
   if (reason.length < 10) return { error: "Describe the issue in a sentence or two." };
-  await db.update(orders).set({ status: "disputed", disputeReason: reason.slice(0, 1000) }).where(eq(orders.id, orderId));
+  await db.update(orders).set({ status: "disputed", disputeReason: reason.slice(0, 1000), disputedAt: new Date() }).where(eq(orders.id, orderId));
   revalidatePath(`/orders/${orderId}`);
-  return { success: "Issue flagged. The seller can respond with new proof and our team will review." };
+  return { success: "Issue flagged. The payout is on hold until it's resolved." };
+}
+
+/**
+ * The creator gives the money back. This is the honest exit for "I can't deliver" and the clean end
+ * to a dispute neither side wants to drag out. The spot goes back on sale if the listing is still open.
+ */
+export async function refundOrder(orderId: string, _prev: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const { order, isSeller } = await loadOrder(orderId, user.id);
+  if (!isSeller) return { error: "Only the creator can refund an order." };
+  if (!["paid", "proof_submitted", "disputed"].includes(order.status)) return { error: "This order can't be refunded." };
+  const note = fieldString(form, "note").slice(0, 1000);
+
+  let refundRef: string;
+  try {
+    refundRef = await refundPayment(order);
+  } catch (err) {
+    console.error("Refund failed", orderId, err);
+    return { error: "The refund couldn't be processed. Please try again or contact support." };
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .update(orders)
+      .set({ status: "refunded", refundRef, refundedAt: new Date(), disputeReason: note ? `Refunded by creator: ${note}` : order.disputeReason })
+      .where(eq(orders.id, orderId));
+    await releaseZone(tx, order.zoneId);
+  });
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath(`/listings/${order.listingId}`);
+  return { success: "The brand has been refunded in full." };
 }
 
 export async function leaveReview(orderId: string, _prev: ActionState, form: FormData): Promise<ActionState> {
@@ -112,16 +144,24 @@ export async function leaveReview(orderId: string, _prev: ActionState, form: For
   if (order.status !== "completed") return { error: "Reviews open once the order is completed." };
   const rating = fieldNumber(form, "rating");
   if (rating < 1 || rating > 5) return { error: "Pick a rating from 1 to 5." };
-  const existing = await db.query.reviews.findFirst({ where: and(eq(reviews.orderId, orderId), eq(reviews.authorId, user.id)) });
-  if (existing) return { error: "You've already reviewed this order." };
-  await db.insert(reviews).values({
-    id: nanoid(12),
-    orderId,
-    authorId: user.id,
-    targetId: isBuyer ? order.sellerId : order.buyerId,
-    rating: Math.round(rating),
-    comment: fieldString(form, "comment").slice(0, 1000),
+  const existing = await db.query.reviews.findMany({ where: eq(reviews.orderId, orderId) });
+  if (existing.some((r) => r.authorId === user.id)) return { error: "You've already reviewed this order." };
+  const theirs = existing.find((r) => r.authorId !== user.id);
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx.insert(reviews).values({
+      id: nanoid(12),
+      orderId,
+      authorId: user.id,
+      targetId: isBuyer ? order.sellerId : order.buyerId,
+      rating: Math.round(rating),
+      comment: fieldString(form, "comment").slice(0, 1000),
+      // Second review in: both are unsealed together. First in: stays sealed until the other side posts.
+      publishedAt: theirs ? now : null,
+    });
+    if (theirs) await tx.update(reviews).set({ publishedAt: now }).where(eq(reviews.orderId, orderId));
   });
   revalidatePath(`/orders/${orderId}`);
-  return { success: "Thanks — your review is live." };
+  if (theirs) revalidatePath("/u/[handle]", "page");
+  return { success: theirs ? "Both reviews are now public." : "Posted. It stays hidden until they review you too." };
 }

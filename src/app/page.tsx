@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/listing-card";
 import { ZoneOverlay } from "@/components/zone-overlay";
 import { getCurrentUser } from "@/lib/auth";
-import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { getFeaturedListings, getMarketplaceStats } from "@/lib/queries";
 
@@ -93,7 +92,7 @@ export default async function HomePage() {
             {
               icon: ShieldCheck,
               title: "Prove it, get paid",
-              body: `Placard holds the money. After the event you upload proof photos, the brand approves, and the payout is released minus a ${PLATFORM_FEE_PERCENT}% fee.`,
+              body: "Placard holds the money. After the event you upload proof photos, the brand approves, and your payout is released. You see exactly what you'll earn before you publish.",
             },
           ].map((s) => (
             <div key={s.title} className="rounded-2xl border p-6">

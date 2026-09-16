@@ -13,6 +13,7 @@ import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, BID_RULE_LABELS, SALE_TYPE_LAB
 import type { ActionState } from "@/lib/actions/types";
 import type { ZoneInput } from "@/lib/actions/listings";
 import type { BidRule, SaleType } from "@/lib/db/schema";
+import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type EditorPhoto = { id: string; url: string; label: string; width: number; height: number };
@@ -30,11 +31,19 @@ export function ZoneEditor({
   photos,
   initialZones,
   onSave,
+  feePercent,
 }: {
   photos: EditorPhoto[];
   initialZones: EditorZone[];
   onSave: (zones: ZoneInput[]) => Promise<ActionState>;
+  /** Placard's cut, passed from the server so the "you'll earn" preview matches what the order will record. */
+  feePercent: number;
 }) {
+  // Mirrors splitAmount() in lib/money.ts, in cents.
+  const earningsCents = (priceDollars: number) => {
+    const cents = Math.round(priceDollars * 100);
+    return cents - Math.round((cents * feePercent) / 100);
+  };
   const router = useRouter();
   const [zones, setZones] = useState<EditorZone[]>(initialZones);
   const [photoId, setPhotoId] = useState(photos[0]?.id ?? "");
@@ -327,7 +336,12 @@ export function ZoneEditor({
                   onChange={(e) => update(selected.key, { startingPrice: e.target.valueAsNumber || 0 })}
                   disabled={selected.locked}
                 />
-                {!AUCTIONS_ENABLED && <p className="text-xs text-muted-foreground">Brands pay this amount at checkout. The spot is theirs the moment payment clears.</p>}
+                {!AUCTIONS_ENABLED && (
+                  <p className="text-xs text-muted-foreground">
+                    Brands pay <span className="font-medium text-foreground">{formatMoney(Math.round((Number(selected.startingPrice) || 0) * 100))}</span> at checkout · you earn{" "}
+                    <span className="font-medium text-foreground">{formatMoney(earningsCents(Number(selected.startingPrice) || 0))}</span> once proof is approved.
+                  </p>
+                )}
               </div>
             </div>
             {AUCTIONS_ENABLED && selected.saleType === "auction" && (
