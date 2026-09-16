@@ -17,8 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: { default: `${APP_NAME} — ${APP_TAGLINE}`, template: `%s · ${APP_NAME}` },
-  description:
-    "The marketplace for on-body and physical sponsorships. List the space you already carry — outfits, cars, bags, booths — and let brands buy it.",
+  description: "Photograph what you're wearing. Draw a box. Set a price.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
