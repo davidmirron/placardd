@@ -6,7 +6,9 @@ The inspiration is the Token2049 dress auction: 13 logo spots, $350 starting bid
 
 This document covers: what the MVP is, how it should work, what it is built on, and what is intentionally deferred.
 
-> **Launch decision (Sep 2026): fixed price only.** Auctions are fully built (bid rules, anti-sniping, settlement) but switched off behind `NEXT_PUBLIC_AUCTIONS_ENABLED`. Reason: a bid is a promise, not a payment — with no card on file a brand can win every auction and never pay. At launch every spot has one price, "Buy now" goes straight to Stripe/test checkout, and the spot is held for one hour while the brand pays. The "bidding deadline" is now an optional "available until" date. Auctions come back once brands can be required to keep a verified card on file, at which point the doubling rule becomes the viral mechanic it was meant to be. The sections below describe the full design including auctions; anything about bidding applies only when the flag is on.
+> **Launch decision (Sep 2026): fixed price only.** Auctions are fully built (bid rules, anti-sniping, settlement) but switched off behind `NEXT_PUBLIC_AUCTIONS_ENABLED` and are not part of the product. Reason: a bid is a promise, not a payment — with no card on file a brand can win every auction and never pay. Every spot has one price, "Buy now" goes straight to Stripe/test checkout, and the spot is held for one hour while the brand pays. The "bidding deadline" is an optional "available until" date. The sections below describe the full design including auctions; anything about bidding applies only when the flag is on.
+>
+> **Trust mechanics added pre-launch:** unread-message indicators; a 7-day proof review window after which payouts auto-release; a real dispute loop (flag → fix & resubmit / refund / accept / escalate to support); creator-initiated full refunds through Stripe; double-blind reviews (sealed until both posted, or 14 days); the platform fee is shown to creators as net earnings and never to brands.
 
 ---
 
@@ -30,11 +32,11 @@ The first wedge is **events** (conferences, races, festivals, launches). Events 
    - **Doubling**: each bid must be at least 2x the current bid (the Token2049 rule). Fast, dramatic, and viral by design.
    - Anti-sniping: a bid in the last 5 minutes extends the auction by 5 minutes.
 6. When the auction ends, the highest bidder wins and an **order** is created. Buy-now creates the order immediately.
-7. Brand pays. Platform holds the money and records its commission (default 15%).
+7. Brand pays. Platform holds the money and records its commission (default 15%). The brand sees only the price; the creator sees their net earnings.
 8. Brand uploads logo assets and instructions inside the order.
 9. After the event, seller uploads **proof** (photos / video).
-10. Brand approves proof → order completes → seller payout is released. If something is wrong, brand flags a dispute for manual review.
-11. Both parties leave a review. Reviews and completed-order counts build trust on profiles.
+10. Brand approves proof → order completes → seller payout is released. The brand has 7 days; if they don't respond the payout releases automatically. If something is wrong, the brand flags an issue: the payout pauses, the creator can fix and resubmit or refund in full, the brand can accept the fix, and either side can escalate to support.
+11. Both parties leave a review. Reviews are sealed until both are in (or 14 days pass), then published together. Reviews and completed-order counts build trust on profiles.
 
 Messaging runs alongside the loop so brands can ask "can you fit a 10cm logo on the left sleeve?" before bidding.
 
