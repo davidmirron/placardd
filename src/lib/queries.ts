@@ -1,9 +1,14 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, like, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bids, conversations, listings, orders, reviews, users, zones, type ListingCategory } from "@/lib/db/schema";
+import { bids, conversations, listings, messages, orders, reviews, users, zones, type ListingCategory } from "@/lib/db/schema";
 import { isZoneLive, settleExpired } from "@/lib/auctions";
-import { LISTING_CATEGORIES } from "@/lib/db/schema";
+import { LISTING_CATEGORIES, RELEASED_ORDER_STATUSES } from "@/lib/db/schema";
+
+/** The order currently holding a zone, ignoring expired holds and refunds that no longer block a resale. */
+export function liveOrder<T extends { status: string }>(zoneOrders: T[]): T | null {
+  return zoneOrders.find((o) => !(RELEASED_ORDER_STATUSES as readonly string[]).includes(o.status)) ?? null;
+}
 
 export type ListingSort = "ending" | "newest" | "price_asc" | "price_desc" | "reach";
 
@@ -97,7 +102,7 @@ export async function getListingDetail(id: string) {
         with: {
           currentBidder: { columns: { id: true, name: true, handle: true, companyName: true, avatarUrl: true } },
           bids: { orderBy: desc(bids.createdAt), limit: 10, with: { bidder: { columns: { id: true, name: true, handle: true, companyName: true } } } },
-          order: { columns: { id: true, status: true, buyerId: true } },
+          orders: { columns: { id: true, status: true, buyerId: true } },
         },
       },
     },
@@ -105,7 +110,11 @@ export async function getListingDetail(id: string) {
   if (!listing) return null;
   const stats = await sellerStats(listing.sellerId);
   const now = Date.now();
-  return { ...listing, zones: listing.zones.map((z) => ({ ...z, live: isZoneLive(z, now) })), sellerStats: stats };
+  return {
+    ...listing,
+    zones: listing.zones.map(({ orders: zoneOrders, ...z }) => ({ ...z, live: isZoneLive(z, now), order: liveOrder(zoneOrders) })),
+    sellerStats: stats,
+  };
 }
 
 export type ListingDetail = NonNullable<Awaited<ReturnType<typeof getListingDetail>>>;
@@ -114,7 +123,7 @@ export async function sellerStats(userId: string) {
   const [ratingRow] = await db
     .select({ avg: sql<number>`avg(${reviews.rating})`, count: sql<number>`count(*)` })
     .from(reviews)
-    .where(eq(reviews.targetId, userId));
+    .where(and(eq(reviews.targetId, userId), isNotNull(reviews.publishedAt)));
   const [completed] = await db
     .select({ count: sql<number>`count(*)` })
     .from(orders)
@@ -133,7 +142,7 @@ export async function getProfileByHandle(handle: string) {
   const [stats, received, activeListings] = await Promise.all([
     sellerStats(user.id),
     db.query.reviews.findMany({
-      where: eq(reviews.targetId, user.id),
+      where: and(eq(reviews.targetId, user.id), isNotNull(reviews.publishedAt)),
       orderBy: desc(reviews.createdAt),
       with: { author: { columns: { id: true, name: true, handle: true, avatarUrl: true, companyName: true } }, order: { with: { listing: { columns: { id: true, title: true } } } } },
     }),
@@ -176,7 +185,7 @@ export async function getBrandDashboard(userId: string) {
     myBidZoneIds.length
       ? db.query.zones.findMany({
           where: inArray(zones.id, myBidZoneIds.map((r) => r.zoneId)),
-          with: { listing: { columns: { id: true, title: true, status: true } }, order: { columns: { id: true, buyerId: true, status: true } } },
+          with: { listing: { columns: { id: true, title: true, status: true } }, orders: { columns: { id: true, buyerId: true, status: true } } },
           orderBy: asc(zones.endsAt),
         })
       : Promise.resolve([]),
@@ -186,8 +195,8 @@ export async function getBrandDashboard(userId: string) {
       with: { zone: { columns: { label: true } }, listing: { columns: { id: true, title: true, eventName: true } }, seller: { columns: { name: true, handle: true } } },
     }),
   ]);
-  const spend = myOrders.filter((o) => o.status !== "cancelled" && o.status !== "pending_payment").reduce((s, o) => s + o.amountCents, 0);
-  return { bidZones, orders: myOrders, spend };
+  const spend = myOrders.filter((o) => !["cancelled", "refunded", "pending_payment"].includes(o.status)).reduce((s, o) => s + o.amountCents, 0);
+  return { bidZones: bidZones.map(({ orders: zoneOrders, ...z }) => ({ ...z, order: liveOrder(zoneOrders) })), orders: myOrders, spend };
 }
 
 export async function getOrderForUser(orderId: string, userId: string) {
@@ -209,18 +218,59 @@ export async function getOrderForUser(orderId: string, userId: string) {
 
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderForUser>>>;
 
+/** When `userId` last opened a conversation; null if never. */
+export function readAtFor(convo: { participantAId: string; participantAReadAt: Date | null; participantBReadAt: Date | null }, userId: string) {
+  return convo.participantAId === userId ? convo.participantAReadAt : convo.participantBReadAt;
+}
+
+/**
+ * Messages from other people that `userId` hasn't opened yet, grouped by conversation.
+ * Powers the header badge and the unread markers on the inbox.
+ */
+export async function getUnreadByConversation(userId: string) {
+  const rows = await db
+    .select({ conversationId: messages.conversationId, count: sql<number>`count(*)` })
+    .from(messages)
+    .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+    .where(
+      and(
+        ne(messages.senderId, userId),
+        or(
+          and(eq(conversations.participantAId, userId), or(sql`${conversations.participantAReadAt} IS NULL`, sql`${messages.createdAt} > ${conversations.participantAReadAt}`)),
+          and(eq(conversations.participantBId, userId), or(sql`${conversations.participantBReadAt} IS NULL`, sql`${messages.createdAt} > ${conversations.participantBReadAt}`)),
+        ),
+      ),
+    )
+    .groupBy(messages.conversationId);
+  const byConversation = new Map(rows.map((r) => [r.conversationId, Number(r.count)]));
+  const total = rows.reduce((n, r) => n + Number(r.count), 0);
+  return { byConversation, total };
+}
+
+export async function getUnreadMessageCount(userId: string) {
+  return (await getUnreadByConversation(userId)).total;
+}
+
 export async function getConversationsForUser(userId: string) {
-  const rows = await db.query.conversations.findMany({
-    where: or(eq(conversations.participantAId, userId), eq(conversations.participantBId, userId)),
-    orderBy: desc(conversations.lastMessageAt),
-    with: {
-      participantA: { columns: { id: true, name: true, handle: true, avatarUrl: true, companyName: true } },
-      participantB: { columns: { id: true, name: true, handle: true, avatarUrl: true, companyName: true } },
-      listing: { columns: { id: true, title: true } },
-      messages: { orderBy: desc(sql`created_at`), limit: 1 },
-    },
-  });
-  return rows.map((c) => ({ ...c, other: c.participantAId === userId ? c.participantB : c.participantA, last: c.messages[0] ?? null }));
+  const [rows, unread] = await Promise.all([
+    db.query.conversations.findMany({
+      where: or(eq(conversations.participantAId, userId), eq(conversations.participantBId, userId)),
+      orderBy: desc(conversations.lastMessageAt),
+      with: {
+        participantA: { columns: { id: true, name: true, handle: true, avatarUrl: true, companyName: true } },
+        participantB: { columns: { id: true, name: true, handle: true, avatarUrl: true, companyName: true } },
+        listing: { columns: { id: true, title: true } },
+        messages: { orderBy: desc(sql`created_at`), limit: 1 },
+      },
+    }),
+    getUnreadByConversation(userId),
+  ]);
+  return rows.map((c) => ({
+    ...c,
+    other: c.participantAId === userId ? c.participantB : c.participantA,
+    last: c.messages[0] ?? null,
+    unreadCount: unread.byConversation.get(c.id) ?? 0,
+  }));
 }
 
 export async function getConversation(conversationId: string, userId: string) {

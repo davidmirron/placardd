@@ -14,10 +14,11 @@ The product plan, architecture decisions and roadmap live in [`docs/PLAN.md`](do
 - Optional "available until" date per listing (defaults to the end of the event day)
 - Browse with search, category, location, price and reach filters
 - Listing page with numbered zone overlays, countdowns, seller card
-- Orders: 15% platform commission, brand creative upload, seller proof upload, approval or dispute
-- Reviews on completed orders, public profiles, direct messaging, role-based dashboards
-- Seed data modelled on the Token2049 dress so the marketplace is never empty
-- Auction engine (minimum-increment and doubling bids, anti-sniping, lazy settlement, 48h payment window) is built and tested but **switched off** via `NEXT_PUBLIC_AUCTIONS_ENABLED`. See "Why no auctions at launch" below
+- Orders: brand creative upload, seller proof upload, approval, issue flagging, creator-initiated refunds (Stripe or test mode). Unanswered proof is auto-approved after 7 days so payouts can't be stalled by silence
+- Placard's commission (default 15%) is recorded on every order. Brands only ever see the price; creators see their net earnings when they set a price and on the order — it is never shown as a fee line
+- Double-blind reviews on completed orders (revealed when both sides have posted, or after 14 days), public profiles, direct messaging with unread badges, role-based dashboards
+- Seed data modelled on the Token2049 dress so the marketplace is never empty (development only by default)
+- Auction engine (minimum-increment and doubling bids, anti-sniping, lazy settlement, 48h payment window) exists in the codebase but is **switched off** via `NEXT_PUBLIC_AUCTIONS_ENABLED` and is not part of the product
 
 ## Run it locally
 
@@ -61,16 +62,23 @@ All demo accounts use the password `password123`.
 
 Copy `.env.example` to `.env.local` and adjust. Everything is optional for local development.
 
-- `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` switch payments from the built-in test checkout to Stripe Checkout (`/api/webhooks/stripe` handles `checkout.session.completed`). Without them, the test checkout page marks orders paid instantly.
+- `AUTH_SECRET` signs session cookies. **Required in production** — the app refuses to start without it. Generate one with `openssl rand -base64 32`.
+- `APP_URL` is the public URL, used for Stripe redirects.
+- `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` switch payments from the built-in test checkout to Stripe Checkout (`/api/webhooks/stripe` handles `checkout.session.completed`). Refunds go through Stripe when configured. Without them, the test checkout page marks orders paid instantly.
 - `PLATFORM_FEE_PERCENT` sets the commission (default 15).
-- `NEXT_PUBLIC_AUCTIONS_ENABLED=true` turns the auction engine back on (sale-type picker in the zone editor, bid controls on listings, bidding deadline required, 48h payment window for winners). Off by default.
 - `DATABASE_URL` accepts a local `file:` path or a Turso/libsql URL.
-- `SEED_DEMO_DATA=false` boots with an empty database.
-- `CRON_SECRET` protects `/api/cron/settle`, which a scheduler can call to release unpaid holds and close listings promptly. Settlement also happens lazily whenever listings are read, so the app works without it.
+- `SEED_DEMO_DATA` controls the demo accounts. Seeding is on in development and **off in production** unless set to `true` — the demo passwords are public.
+- `CRON_SECRET` protects `/api/cron/settle`, which a scheduler should call every few minutes to release unpaid holds, auto-approve unanswered proof, reveal sealed reviews and close listings on time. Settlement also happens lazily whenever listings are read, so the app works without it.
+- `NEXT_PUBLIC_SUPPORT_EMAIL` is where "Escalate to Placard" on a disputed order sends people.
+- `NEXT_PUBLIC_AUCTIONS_ENABLED=true` turns the dormant auction engine on. Leave it unset.
 
-### Why no auctions at launch
+### How money moves
 
-A bid is a promise, not a payment. Without a card on file, a brand can win every auction on the site and never pay, and the only cost to them is losing the spot. Fixed price with immediate checkout removes that: money moves before the spot is taken. The doubling auction from the original Token2049 thread is kept in the codebase and comes back as a feature for brands with a verified card on file — that is when it becomes a viral mechanic instead of a troll magnet.
+Brands pay the listed price at checkout and Placard holds it. The creator uploads proof after the event; the brand has 7 days to approve or flag an issue, after which the payout is released automatically. A flagged issue pauses the payout: the creator can resubmit proof or refund the brand in full, the brand can accept the fix, and either side can escalate to support. Placard's commission is recorded on each order and shown to creators as their net earnings — brands never see a fee.
+
+### Why fixed price
+
+A bid is a promise, not a payment. Without a card on file, a brand can win every auction on the site and never pay, and the only cost to them is losing the spot. Fixed price with immediate checkout removes that: money moves before the spot is taken.
 
 ## Stack
 
@@ -91,6 +99,15 @@ drizzle/            SQL migrations
 docs/PLAN.md        product and technical plan
 ```
 
+## Before launch
+
+Things that must be true on the production box:
+
+1. `AUTH_SECRET`, `APP_URL`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set; `SEED_DEMO_DATA` unset or `false`.
+2. `data/` (SQLite + uploads) on a persistent disk, or `DATABASE_URL` pointed at Turso and `UPLOAD_DIR` at a mounted volume. A serverless deploy with ephemeral disk will lose every upload.
+3. A scheduler hitting `GET /api/cron/settle` with `Authorization: Bearer $CRON_SECRET`.
+4. A payout process. "Payout released" is a status: the money is in the platform's Stripe balance until Stripe Connect transfers are wired (see roadmap). Until then payouts are manual.
+
 ## What's next
 
-See the roadmap in `docs/PLAN.md`: Stripe Connect payouts, S3/R2 media storage, email notifications, verified social reach (link X/Instagram), auctions for brands with a card on file, event pages, and an admin console for disputes.
+See the roadmap in `docs/PLAN.md`: Stripe Connect payouts, S3/R2 media storage, email notifications, verified social reach (link X/Instagram), event pages, and an admin console for disputes.

@@ -12,7 +12,12 @@ const COOKIE_NAME = "placard_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function secret() {
-  const raw = process.env.AUTH_SECRET ?? "placard-dev-secret-change-me-before-going-live";
+  const raw = process.env.AUTH_SECRET;
+  if (!raw) {
+    // A guessable signing key means anyone can mint a session for any account. Fine on a laptop, never in prod.
+    if (process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET must be set in production. Generate one with: openssl rand -base64 32");
+    return new TextEncoder().encode("placard-dev-secret-not-for-production");
+  }
   return new TextEncoder().encode(raw);
 }
 

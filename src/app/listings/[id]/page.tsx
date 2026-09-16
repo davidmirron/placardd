@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, MessageSquare, Pencil, Star, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ProtectedByPlacard } from "@/components/protected-by-placard";
 import { ListingStatusBadge } from "@/components/status-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { ListingSpots } from "./listing-spots";
 import { getCurrentUser } from "@/lib/auth";
 import { startConversation } from "@/lib/actions/messages";
-import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, CATEGORY_LABELS, PLATFORM_FEE_PERCENT } from "@/lib/constants";
+import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, formatReach, pluralize } from "@/lib/format";
 import { getListingDetail } from "@/lib/queries";
 
@@ -205,9 +206,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             <p className="mt-3 text-xs text-muted-foreground">Reach is self-reported by the creator. Verified social reach is on our roadmap.</p>
           </div>
 
-          <div className="rounded-2xl border bg-muted/40 p-5 text-xs text-muted-foreground">
-            {AUCTIONS_ENABLED ? "Brands pay on winning." : "Brands pay at checkout; a spot is only taken once payment clears."} Placard holds the funds and releases them to the creator after proof is approved. A {PLATFORM_FEE_PERCENT}% platform fee is taken from the creator side.
-          </div>
+          <ProtectedByPlacard audience={isOwner ? "creator" : "brand"} />
         </aside>
       </div>
     </div>

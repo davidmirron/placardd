@@ -21,6 +21,24 @@ export const AUCTION_PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
 /** A fixed-price buy is a checkout in progress; the spot is held only this long if payment never lands. */
 export const BUY_NOW_HOLD_MS = 60 * 60 * 1000;
 
+/**
+ * Once a creator submits proof the brand has this long to approve or flag an issue. If they do neither,
+ * the order completes and the payout is released automatically — a creator's money can't be held
+ * hostage by a brand that simply stops replying.
+ */
+export const PROOF_REVIEW_WINDOW_DAYS = 7;
+export const PROOF_REVIEW_WINDOW_MS = PROOF_REVIEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * Reviews are sealed until both sides have posted, so nobody writes theirs in reaction to the other's.
+ * If only one side reviews, theirs is revealed after this window so it isn't held hostage either.
+ */
+export const REVIEW_REVEAL_WINDOW_DAYS = 14;
+export const REVIEW_REVEAL_WINDOW_MS = REVIEW_REVEAL_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+/** Where disputes that the two parties can't settle between them get escalated. */
+export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@placard.app";
+
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 export const CATEGORY_LABELS: Record<ListingCategory, string> = {
@@ -59,7 +77,8 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   paid: "Paid · awaiting proof",
   proof_submitted: "Proof submitted",
   completed: "Completed",
-  disputed: "Disputed",
+  disputed: "Issue flagged",
+  refunded: "Refunded",
   cancelled: "Cancelled",
 };
 

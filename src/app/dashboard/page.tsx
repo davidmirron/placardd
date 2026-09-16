@@ -1,15 +1,45 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Camera, MessageSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/countdown";
 import { ListingStatusBadge, OrderStatusBadge } from "@/components/status-badge";
 import { requireUser } from "@/lib/auth";
-import { AUCTIONS_ENABLED } from "@/lib/constants";
+import { AUCTIONS_ENABLED, PROOF_REVIEW_WINDOW_MS } from "@/lib/constants";
 import { formatDate, formatMoney, pluralize } from "@/lib/format";
-import { getBrandDashboard, getCreatorDashboard } from "@/lib/queries";
+import { getBrandDashboard, getCreatorDashboard, getUnreadMessageCount } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Dashboard" };
+
+/** Things that aren't orders but still deserve a glance: new messages, a missing profile photo. */
+async function Nudges({ userId, hasAvatar }: { userId: string; hasAvatar: boolean }) {
+  const unread = await getUnreadMessageCount(userId);
+  if (unread === 0 && hasAvatar) return null;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {unread > 0 && (
+        <Link href="/messages" className="flex items-center gap-3 rounded-2xl border border-brand/40 bg-brand-soft/40 px-4 py-3 text-sm hover:bg-brand-soft/70">
+          <MessageSquare className="size-5 shrink-0 text-brand" />
+          <span className="flex-1">
+            <span className="font-medium">{pluralize(unread, "new message")}</span>
+            <span className="text-muted-foreground"> waiting in your inbox</span>
+          </span>
+          <ArrowRight className="size-4 text-muted-foreground" />
+        </Link>
+      )}
+      {!hasAvatar && (
+        <Link href="/settings" className="flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm hover:bg-muted/50">
+          <Camera className="size-5 shrink-0 text-muted-foreground" />
+          <span className="flex-1">
+            <span className="font-medium">Add a profile photo</span>
+            <span className="text-muted-foreground"> — people deal with faces, not initials</span>
+          </span>
+          <ArrowRight className="size-4 text-muted-foreground" />
+        </Link>
+      )}
+    </div>
+  );
+}
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -49,6 +79,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </Button>
         )}
       </div>
+      <Nudges userId={user.id} hasAvatar={!!user.avatarUrl} />
       {user.role === "creator" ? <CreatorDashboard userId={user.id} /> : <BrandDashboard userId={user.id} />}
     </div>
   );
@@ -57,6 +88,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 async function CreatorDashboard({ userId }: { userId: string }) {
   const data = await getCreatorDashboard(userId);
   const needsProof = data.orders.filter((o) => o.status === "paid" || o.status === "disputed");
+  const awaitingApproval = data.orders.filter((o) => o.status === "proof_submitted");
   const live = data.listings.filter((l) => l.status === "active");
   const openSpots = live.reduce((n, l) => n + l.zones.filter((z) => z.status === "open").length, 0);
 
@@ -64,7 +96,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
     <>
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Live listings" value={String(live.length)} hint={AUCTIONS_ENABLED ? pluralize(data.liveBids, "active bid") : `${pluralize(openSpots, "spot")} for sale`} />
-        <Stat label="Earnings (after fees)" value={formatMoney(data.earnings)} hint={`${formatMoney(data.released)} released`} />
+        <Stat label="Your earnings" value={formatMoney(data.earnings)} hint={`${formatMoney(data.released)} released · ${formatMoney(data.earnings - data.released)} held until proof is approved`} />
         <Stat label="Orders needing proof" value={String(needsProof.length)} hint={needsProof.length ? "Upload proof to release payouts" : "Nothing waiting on you"} />
       </div>
 
@@ -79,13 +111,42 @@ async function CreatorDashboard({ userId }: { userId: string }) {
                     {o.zone.label} · {o.listing.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {o.buyer.companyName ?? o.buyer.name} paid {formatMoney(o.amountCents)} · you receive {formatMoney(o.sellerNetCents)}
+                    {o.status === "disputed"
+                      ? `${o.buyer.companyName ?? o.buyer.name} flagged an issue · respond to release ${formatMoney(o.sellerNetCents)}`
+                      : `${o.buyer.companyName ?? o.buyer.name} paid · you earn ${formatMoney(o.sellerNetCents)} once proof is approved`}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <OrderStatusBadge status={o.status} />
                   <Button asChild size="sm">
-                    <Link href={`/orders/${o.id}`}>Upload proof</Link>
+                    <Link href={`/orders/${o.id}`}>{o.status === "disputed" ? "Respond" : "Upload proof"}</Link>
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {awaitingApproval.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Waiting on the brand</h2>
+          <ul className="divide-y rounded-2xl border">
+            {awaitingApproval.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <div>
+                  <p className="font-medium">
+                    {o.zone.label} · {o.listing.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Proof sent {formatDate(o.proofSubmittedAt)} · {formatMoney(o.sellerNetCents)} releases automatically on{" "}
+                    {formatDate(o.proofSubmittedAt ? o.proofSubmittedAt.getTime() + PROOF_REVIEW_WINDOW_MS : null)} if {o.buyer.companyName ?? o.buyer.name} doesn&apos;t respond
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <OrderStatusBadge status={o.status} />
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/orders/${o.id}`}>Open</Link>
                   </Button>
                 </div>
               </li>
@@ -162,7 +223,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
           title: `${o.zone.label} · ${o.listing.title}`,
           counterparty: o.buyer.companyName ?? o.buyer.name,
           amount: o.sellerNetCents,
-          amountLabel: "You receive",
+          amountLabel: "You earn",
           status: o.status,
           date: o.createdAt,
         }))}
@@ -175,9 +236,11 @@ async function BrandDashboard({ userId }: { userId: string }) {
   const data = await getBrandDashboard(userId);
   const toPay = data.orders.filter((o) => o.status === "pending_payment");
   const toReview = data.orders.filter((o) => o.status === "proof_submitted");
+  const disputed = data.orders.filter((o) => o.status === "disputed");
   const liveBids = data.bidZones.filter((z) => z.status === "open");
   const leading = liveBids.filter((z) => z.currentBidderId === userId);
-  const activeOrders = data.orders.filter((o) => o.status !== "cancelled");
+  const activeOrders = data.orders.filter((o) => o.status !== "cancelled" && o.status !== "refunded");
+  const awaiting = toPay.length + toReview.length + disputed.length;
 
   return (
     <>
@@ -188,14 +251,14 @@ async function BrandDashboard({ userId }: { userId: string }) {
           <Stat label="Spots bought" value={String(activeOrders.length)} hint={activeOrders.length ? `${pluralize(activeOrders.filter((o) => o.status === "completed").length, "deal")} completed` : "Browse spots to buy your first"} />
         )}
         <Stat label="Total spend" value={formatMoney(data.spend)} hint="Paid orders" />
-        <Stat label="Awaiting you" value={String(toPay.length + toReview.length)} hint={toPay.length ? `${pluralize(toPay.length, "order")} to pay` : toReview.length ? "Proof to approve" : "All caught up"} />
+        <Stat label="Awaiting you" value={String(awaiting)} hint={toPay.length ? `${pluralize(toPay.length, "order")} to pay` : toReview.length ? "Proof to approve" : disputed.length ? "Open issue to resolve" : "All caught up"} />
       </div>
 
-      {(toPay.length > 0 || toReview.length > 0) && (
+      {awaiting > 0 && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Action needed</h2>
           <ul className="divide-y rounded-2xl border">
-            {[...toPay, ...toReview].map((o) => (
+            {[...toPay, ...toReview, ...disputed].map((o) => (
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div>
                   <p className="font-medium">
@@ -203,12 +266,16 @@ async function BrandDashboard({ userId }: { userId: string }) {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {formatMoney(o.amountCents)} · {o.seller.name}
+                    {o.status === "proof_submitted" && o.proofSubmittedAt && (
+                      <> · approve or flag by {formatDate(o.proofSubmittedAt.getTime() + PROOF_REVIEW_WINDOW_MS)}, after that payment releases automatically</>
+                    )}
+                    {o.status === "disputed" && <> · you flagged an issue, waiting on the creator</>}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <OrderStatusBadge status={o.status} />
-                  <Button asChild size="sm">
-                    <Link href={`/orders/${o.id}`}>{o.status === "pending_payment" ? "Pay now" : "Review proof"}</Link>
+                  <Button asChild size="sm" variant={o.status === "disputed" ? "outline" : "default"}>
+                    <Link href={`/orders/${o.id}`}>{o.status === "pending_payment" ? "Pay now" : o.status === "proof_submitted" ? "Review proof" : "Open"}</Link>
                   </Button>
                 </div>
               </li>

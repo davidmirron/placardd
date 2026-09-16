@@ -4,11 +4,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
+import { MarkRead } from "./mark-read";
 import { MessageComposer } from "./message-composer";
+import { MessageThread } from "./message-thread";
 import { requireUser } from "@/lib/auth";
-import { formatDateTime } from "@/lib/format";
-import { getConversation } from "@/lib/queries";
-import { cn } from "@/lib/utils";
+import { getConversation, readAtFor } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Conversation" };
 
@@ -18,8 +18,12 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   const convo = await getConversation(id, user.id);
   if (!convo) notFound();
 
+  const readAt = readAtFor(convo, user.id)?.getTime() ?? 0;
+  const firstUnreadId = convo.messages.find((m) => m.senderId !== user.id && m.createdAt.getTime() > readAt)?.id ?? null;
+
   return (
     <div className="container-page flex max-w-3xl flex-col py-8" style={{ minHeight: "calc(100vh - 3.5rem)" }}>
+      <MarkRead conversationId={convo.id} hasUnread={firstUnreadId !== null} />
       <div className="mb-4 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon-sm" aria-label="Back to messages">
           <Link href="/messages">
@@ -40,18 +44,11 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
       </div>
 
       <div className="flex-1 space-y-3 rounded-2xl border p-4">
-        {convo.messages.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Say hello. Ask about sizes, colours, timing — anything before you commit.</p>}
-        {convo.messages.map((m) => {
-          const mine = m.senderId === user.id;
-          return (
-            <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", mine ? "bg-foreground text-background" : "bg-muted")}>
-                <p className="whitespace-pre-line">{m.body}</p>
-                <p className={cn("mt-1 text-[10px]", mine ? "text-background/60" : "text-muted-foreground")}>{formatDateTime(m.createdAt)}</p>
-              </div>
-            </div>
-          );
-        })}
+        <MessageThread
+          messages={convo.messages.map((m) => ({ id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.getTime() }))}
+          viewerId={user.id}
+          firstUnreadId={firstUnreadId}
+        />
       </div>
 
       <MessageComposer conversationId={convo.id} />
