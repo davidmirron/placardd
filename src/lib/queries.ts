@@ -100,7 +100,7 @@ export async function getListingTitle(id: string) {
   return listing?.title ?? null;
 }
 
-export const getListingDetail = cache(async function getListingDetail(id: string) {
+export const getListingDetail = cache(async (id: string) => {
   await settleExpired(id);
   const listing = await db.query.listings.findFirst({
     where: eq(listings.id, id),
