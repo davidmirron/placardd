@@ -8,17 +8,6 @@ import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { getFeaturedListings, getMarketplaceStats } from "@/lib/queries";
 
-/**
- * Public, reported sales of physical ad space. Shown in place of marketplace stats until
- * Placard has real sales of its own, so the page never leads with zeros or seeded numbers.
- */
-const PRECEDENTS = [
-  { price: "$21,800", what: "Nine square inches of an Olympic runner's shoulder", when: "eBay, 2016" },
-  { price: "€1,600", what: "The top spot on the back of a wedding tuxedo", when: "26 startups, 2025" },
-  { price: "$20,000", what: "One founder's glutes, for one race", when: "Bought by Stanley, 2026" },
-  { price: "$112,062", what: "15 spots on one body, sold out in 48 hours", when: "September 2026" },
-];
-
 export default async function HomePage() {
   const [featured, stats, user] = await Promise.all([getFeaturedListings(6), getMarketplaceStats(), getCurrentUser()]);
   const hasRealSales = stats.spotsSold > 0;
@@ -28,19 +17,19 @@ export default async function HomePage() {
       <section className="border-b bg-gradient-to-b from-brand-soft/60 to-background">
         <div className="container-page grid items-center gap-10 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
           <div className="space-y-6">
-            <span className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs font-medium">
-              <span className="size-2 rounded-full bg-brand" /> September 2026: one body, 15 logo spots, $112,062 in 48 hours
-            </span>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">placard</span> <span className="italic">noun</span> · a sign carried by a person.
+            </p>
             <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              Sell the space you already carry.
+              Sell ad space on what you&apos;re wearing.
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
-              Last week a founder made $112,062 selling 15 logo spots on his body for one race. Stanley paid $20,000 for his glutes. He needed a 3D scan, a Stripe account and a weekend of code. You need a photo. Draw the spots, name the price, brands pay at checkout.
+              Photograph the outfit, the car, the bag, the booth. Draw a box on every spot a logo fits. Put a price on each one. A brand pays at checkout, you wear it at the event, you get paid.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link href={user?.role === "creator" ? "/sell/new" : "/signup?role=creator"}>
-                  Put a price on your outfit <ArrowRight />
+                  Put a price on it <ArrowRight />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
@@ -63,18 +52,20 @@ export default async function HomePage() {
                 </div>
               </dl>
             ) : (
-              <div className="pt-2">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">What people have paid for a logo on a person</p>
-                <ul className="grid gap-3 text-sm sm:grid-cols-2">
-                  {PRECEDENTS.map((p) => (
-                    <li key={p.price} className="rounded-xl border bg-background/70 p-3">
-                      <p className="text-xl font-semibold tabular-nums">{p.price}</p>
-                      <p className="text-foreground">{p.what}</p>
-                      <p className="text-xs text-muted-foreground">{p.when}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <dl className="grid gap-4 pt-2 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="font-semibold text-foreground">One price per spot.</dt>
+                  <dd className="text-muted-foreground">No bidding. No haggling.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">Paid at checkout.</dt>
+                  <dd className="text-muted-foreground">Held until you&apos;ve worn it.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">{PLATFORM_FEE_PERCENT}% fee.</dt>
+                  <dd className="text-muted-foreground">Nothing else.</dd>
+                </div>
+              </dl>
             )}
           </div>
 
@@ -102,24 +93,24 @@ export default async function HomePage() {
 
       <section className="container-page py-16">
         <div className="mb-10 max-w-2xl space-y-3">
-          <h2 className="text-3xl font-semibold tracking-tight text-balance">Every human billboard so far had to build their own store.</h2>
+          <h2 className="text-3xl font-semibold tracking-tight text-balance">A photo. A box. A price.</h2>
           <p className="text-muted-foreground">
-            The Olympian used eBay. The groom hired a tailor and wrote a website. The founder had 300 photos taken and coded a 3D model of himself. Placard takes a photo and an afternoon.
+            No agent, no pitch deck, no six weeks of email. You list it in an afternoon and it sells while you pack.
           </p>
         </div>
         <ol className="grid gap-6 md:grid-cols-3">
           {[
             {
               title: "Photograph it.",
-              body: "Front, back, side. The outfit, the car, the bag, the booth. Whatever will be seen by people who are not you.",
+              body: "Front, back, side. The outfit, the car, the bag, the booth. Whatever people will be looking at.",
             },
             {
-              title: "Draw the spots. Name the price.",
-              body: "Drag a box over the chest, the sleeve, the door panel. $300 or $3,000, your call. No bidding, no haggling, no back-and-forth.",
+              title: "Draw the spots.",
+              body: "Drag a box wherever a logo fits. Chest, sleeve, door panel, booth wall. Give each one a price. $300 or $3,000, your call.",
             },
             {
               title: "Wear it. Get paid.",
-              body: `The brand pays at checkout and Placard holds the money. After the event you upload proof photos, they approve, you're paid. Placard keeps ${PLATFORM_FEE_PERCENT}%.`,
+              body: `The brand pays at checkout and we hold the money. After the event you upload a photo, they approve, you're paid. We keep ${PLATFORM_FEE_PERCENT}%.`,
             },
           ].map((s, i) => (
             <li key={s.title} className="rounded-2xl border p-6">
@@ -133,13 +124,13 @@ export default async function HomePage() {
 
       <section className="border-y bg-muted/30">
         <div className="container-page grid gap-8 py-16 lg:grid-cols-[1fr_1.2fr] lg:items-start">
-          <h2 className="text-3xl font-semibold tracking-tight text-balance">&ldquo;But I don&apos;t have 200,000 followers.&rdquo;</h2>
+          <h2 className="text-3xl font-semibold tracking-tight text-balance">You don&apos;t need followers. You need a room.</h2>
           <div className="space-y-4 text-lg text-muted-foreground">
-            <p>Neither does the room, and the room is what the brand is buying.</p>
             <p>
-              The companies that spent $112,062 on one man&apos;s body were not paying for his follower count. They were paying to be in every photo of him pushing a sled in front of a crowd. You&apos;re speaking to 2,000 people. You&apos;re running past 50,000. You&apos;re parked at a festival for three days.
+              Twenty minutes on a stage in front of 2,000 people. Four hours running past 50,000. Three days parked at the festival gate. Someone is always looking at you. Until now, nobody paid for it.
             </p>
-            <p className="font-medium text-foreground">Price the room, not your follower count.</p>
+            <p>Brands aren&apos;t buying your feed. They&apos;re buying the room you&apos;re already standing in.</p>
+            <p className="font-medium text-foreground">Price the room.</p>
           </div>
         </div>
       </section>

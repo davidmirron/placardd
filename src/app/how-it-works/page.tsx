@@ -114,7 +114,7 @@ export default function HowItWorksPage() {
           </div>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>Clicking Buy now holds the spot for one hour while you complete checkout. If payment does not arrive, the spot goes back on sale.</li>
-            <li>Auctions (including the doubling rule from the original Token2049 thread) are built and will be switched on for brands with a verified card on file.</li>
+            <li>Auctions are built and will be switched on for brands with a verified card on file.</li>
           </ul>
         </section>
       )}
