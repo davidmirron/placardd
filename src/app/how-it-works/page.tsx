@@ -1,38 +1,47 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { BadgeCheck, Flag, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, PLATFORM_FEE_PERCENT } from "@/lib/constants";
+import { PROOF_REVIEW_WINDOW_DAYS, REVIEW_REVEAL_WINDOW_DAYS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "How it works" };
 
 const creatorSteps = [
   ["Create a listing", "Name the event or time window, where it happens, and how many people will see you — in person and online."],
   ["Upload photos", "Front, back, sides, details. Good photos sell spots; brands need to see exactly where their logo lands."],
-  [
-    "Draw your ad spots",
-    AUCTIONS_ENABLED
-      ? "Drag rectangles on each photo. Give every spot a name, a size hint, and a price. Choose auction or fixed price."
-      : "Drag rectangles on each photo. Give every spot a name, a size hint, and a price. That price is what the brand pays — no haggling.",
-  ],
-  [
-    "Publish and share",
-    AUCTIONS_ENABLED
-      ? "Post the link. Every outbid is a small drama your followers will watch. Countdown auctions end on your deadline."
-      : "Post the link. Brands buy straight from the listing page, and each sale shows up on your dashboard as a paid order.",
-  ],
+  ["Draw your ad spots", "Drag rectangles on each photo. Give every spot a name, a size hint, and a price. You see what you'll earn on each one before you publish."],
+  ["Publish and share", "Post the link. Brands buy straight from the listing page, and each sale shows up on your dashboard as a paid order."],
   ["Deliver and prove", "Print or wrap the logos, do the event, then upload proof photos or video. When the brand approves, your payout is released."],
 ];
 
 const brandSteps = [
   ["Browse or search", "Filter by event, category, location, price and reach. Open a listing to see the mapped spots on real photos."],
-  [
-    AUCTIONS_ENABLED ? "Bid or buy" : "Buy the spot",
-    AUCTIONS_ENABLED
-      ? "Place a bid that follows the spot's rule, or hit buy-now. You get an order the moment you win."
-      : "Hit Buy now and you go straight to checkout. The spot is reserved for you while you pay and is yours the moment payment clears.",
-  ],
-  ["Send your assets", "Placard holds the funds. Upload print-ready logos and placement notes on the order, and message the creator with questions."],
-  ["Approve proof", "After the event the creator uploads proof. Approve it to release payment, or flag an issue for review."],
+  ["Buy the spot", "Hit Buy now and you go straight to checkout. The spot is reserved for you while you pay and is yours the moment payment clears."],
+  ["Send your assets", "Upload print-ready logos and placement notes on the order, and message the creator with any questions."],
+  ["Approve proof", "After the event the creator uploads proof. Approve it to release payment, or flag an issue if something isn't right."],
+];
+
+const protections = [
+  {
+    icon: Lock,
+    title: "Money is held, not handed over",
+    body: "A brand pays at checkout and Placard holds the funds. The creator can see the order is paid, but nothing moves to them until the work is done.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Proof before payout",
+    body: `The creator uploads photos or video of the logo in place. The brand has ${PROOF_REVIEW_WINDOW_DAYS} days to approve or flag an issue; if they do neither, the payout is released automatically so a creator is never left waiting on silence.`,
+  },
+  {
+    icon: Flag,
+    title: "Issues get resolved, not ignored",
+    body: "Flagging an issue pauses the payout and tells the creator exactly what's wrong. They can fix it and resubmit, or refund the brand in full. If the two of you can't agree, escalate it and Placard makes the call.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Reviews you can trust",
+    body: `Both sides review each completed deal. Reviews stay sealed until both are in (or ${REVIEW_REVEAL_WINDOW_DAYS} days pass), so nobody writes theirs in reaction to the other's. Ratings and completed-deal counts live on every profile.`,
+  },
 ];
 
 export default function HowItWorksPage() {
@@ -76,54 +85,53 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {AUCTIONS_ENABLED ? (
-        <section className="space-y-6">
-          <h2 className="text-2xl font-semibold">Auction rules</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border p-6">
-              <h3 className="font-medium">Minimum increment</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{BID_RULE_DESCRIPTIONS.increment}</p>
-            </div>
-            <div className="rounded-2xl border border-brand/40 bg-brand-soft/40 p-6">
-              <h3 className="font-medium">Doubling bids</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{BID_RULE_DESCRIPTIONS.doubling}</p>
-            </div>
+      <section className="space-y-6">
+        <h2 className="text-2xl font-semibold">Pricing</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-brand/40 bg-brand-soft/40 p-6">
+            <h3 className="font-medium">One price, set by the creator</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Every spot has a single price. The brand pays exactly that at checkout — nothing added on top — and the spot is sold. No bidding, no haggling, no reservations without money behind them.
+            </p>
           </div>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>Every spot has its own countdown. A bid in the final five minutes extends that spot by five minutes so nobody wins by sniping.</li>
-            <li>Creators can add a buy-now price to any auction. A bid at or above it takes the spot instantly.</li>
-            <li>Winners have 48 hours to pay. Unpaid spots are released.</li>
-          </ul>
-        </section>
-      ) : (
-        <section className="space-y-6">
-          <h2 className="text-2xl font-semibold">Pricing</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-brand/40 bg-brand-soft/40 p-6">
-              <h3 className="font-medium">Fixed price, paid up front</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Every spot has one price set by the creator. A brand pays it at checkout and the spot is sold. No bids, no reservations without money behind them.
-              </p>
-            </div>
-            <div className="rounded-2xl border p-6">
-              <h3 className="font-medium">Available until</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Creators set when spots stop being purchasable — by default the end of the event day — so there is always time to print or apply the logos.
-              </p>
-            </div>
+          <div className="rounded-2xl border p-6">
+            <h3 className="font-medium">Creators see their earnings up front</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Placard&apos;s service is included in the price. When you set a price, the listing builder shows you exactly what you&apos;ll earn on that spot, so there are no surprises at payout.
+            </p>
           </div>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>Clicking Buy now holds the spot for one hour while you complete checkout. If payment does not arrive, the spot goes back on sale.</li>
-            <li>Auctions (including the doubling rule from the original Token2049 thread) are built and will be switched on for brands with a verified card on file.</li>
-          </ul>
-        </section>
-      )}
+          <div className="rounded-2xl border p-6">
+            <h3 className="font-medium">Available until</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Creators set when spots stop being purchasable — by default the end of the event day — so there is always time to print or apply the logos.
+            </p>
+          </div>
+          <div className="rounded-2xl border p-6">
+            <h3 className="font-medium">A short hold while you pay</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Clicking Buy now holds the spot for one hour while you complete checkout. If payment doesn&apos;t arrive, the spot goes straight back on sale.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold">Why go through Placard</h2>
+          <p className="text-muted-foreground">Sponsorship between strangers only works if neither side has to take the other on faith.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {protections.map((p) => (
+            <div key={p.title} className="rounded-2xl border p-6">
+              <p.icon className="mb-3 size-5 text-brand" />
+              <h3 className="font-medium">{p.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{p.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="space-y-4 rounded-2xl border p-6">
-        <h2 className="text-2xl font-semibold">Fees and payouts</h2>
-        <p className="text-sm text-muted-foreground">
-          Brands pay the {AUCTIONS_ENABLED ? "winning" : "listed"} price. Placard keeps a {PLATFORM_FEE_PERCENT}% commission and releases the rest to the creator once the brand approves proof of delivery. If the brand flags an issue, the order pauses for review.
-        </p>
+        <h2 className="text-2xl font-semibold">Ready?</h2>
+        <p className="text-sm text-muted-foreground">Listing takes a photo and an afternoon. Buying takes a click.</p>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
             <Link href="/signup?role=creator">Start as a creator</Link>
