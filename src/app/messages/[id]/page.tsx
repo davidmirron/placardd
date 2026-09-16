@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { MarkRead } from "./mark-read";
 import { MessageComposer } from "./message-composer";
+import { MessageThread } from "./message-thread";
 import { requireUser } from "@/lib/auth";
-import { formatDateTime } from "@/lib/format";
 import { getConversation, readAtFor } from "@/lib/queries";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Conversation" };
 
@@ -45,27 +44,11 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
       </div>
 
       <div className="flex-1 space-y-3 rounded-2xl border p-4">
-        {convo.messages.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Say hello. Ask about sizes, colours, timing — anything before you commit.</p>}
-        {convo.messages.map((m) => {
-          const mine = m.senderId === user.id;
-          return (
-            <div key={m.id}>
-              {m.id === firstUnreadId && (
-                <div className="my-2 flex items-center gap-3 text-[11px] font-medium tracking-wide text-brand uppercase" role="separator">
-                  <span className="h-px flex-1 bg-brand/40" />
-                  New
-                  <span className="h-px flex-1 bg-brand/40" />
-                </div>
-              )}
-              <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", mine ? "bg-foreground text-background" : "bg-muted")}>
-                  <p className="whitespace-pre-line">{m.body}</p>
-                  <p className={cn("mt-1 text-[10px]", mine ? "text-background/60" : "text-muted-foreground")}>{formatDateTime(m.createdAt)}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        <MessageThread
+          messages={convo.messages.map((m) => ({ id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.getTime() }))}
+          viewerId={user.id}
+          firstUnreadId={firstUnreadId}
+        />
       </div>
 
       <MessageComposer conversationId={convo.id} />
