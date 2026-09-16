@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { Camera, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUploader } from "@/components/file-uploader";
 import { FormMessage, SubmitButton } from "@/components/form-bits";
 import { UserAvatar } from "@/components/user-avatar";
 import { updateProfile } from "@/lib/actions/profile";
@@ -28,13 +28,57 @@ type Props = {
 export function SettingsForm({ user }: Props) {
   const [state, action] = useActionState(updateProfile, undefined);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? "");
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const avatarDirty = avatarUrl !== (user.avatarUrl ?? "");
+
+  const uploadAvatar = async (file: File) => {
+    setAvatarError(null);
+    setAvatarBusy(true);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      form.set("folder", "avatars");
+      form.set("kind", "image");
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Upload failed.");
+      setAvatarUrl(data.url);
+    } catch (err) {
+      setAvatarError((err as Error).message);
+    } finally {
+      setAvatarBusy(false);
+      if (avatarInput.current) avatarInput.current.value = "";
+    }
+  };
 
   return (
     <form action={action} className="space-y-6">
       <input type="hidden" name="avatarUrl" value={avatarUrl} />
-      <div className="flex items-center gap-4">
-        <UserAvatar name={user.name} avatarUrl={avatarUrl || null} className="size-16" />
-        <FileUploader folder="avatars" variant="button" label="Change photo" onUploaded={(f) => setAvatarUrl(f.url)} />
+      <div className="flex items-center gap-5">
+        <input ref={avatarInput} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} disabled={avatarBusy} />
+        <button
+          type="button"
+          onClick={() => avatarInput.current?.click()}
+          disabled={avatarBusy}
+          className="group relative rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          aria-label={avatarUrl ? "Change profile photo" : "Add profile photo"}
+        >
+          <UserAvatar name={user.name} avatarUrl={avatarUrl || null} className="size-20 text-lg" />
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            {avatarBusy ? <Loader2 className="size-5 animate-spin" /> : <Camera className="size-5" />}
+          </span>
+        </button>
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{avatarUrl ? "Profile photo" : "Add a profile photo"}</p>
+          <p className="text-xs text-muted-foreground">
+            {user.role === "brand" ? "Your logo works best. " : "A clear photo of you — brands are buying a person, not a placeholder. "}
+            JPG, PNG or WEBP. Click the circle to {avatarUrl ? "change it" : "upload"}.
+          </p>
+          {avatarDirty && !avatarBusy && <p className="text-xs text-emerald-700 dark:text-emerald-400">New photo ready — hit Save profile to keep it.</p>}
+          {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
