@@ -69,6 +69,9 @@ export function SettingsForm({ user }: Props) {
           <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
             {avatarBusy ? <Loader2 className="size-5 animate-spin" /> : <Camera className="size-5" />}
           </span>
+          <span className="absolute -right-0.5 -bottom-0.5 flex size-7 items-center justify-center rounded-full border-2 border-background bg-foreground text-background shadow-sm group-hover:opacity-0">
+            {avatarBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+          </span>
         </button>
         <div className="space-y-1">
           <p className="text-sm font-medium">{avatarUrl ? "Profile photo" : "Add a profile photo"}</p>
