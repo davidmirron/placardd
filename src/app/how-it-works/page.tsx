@@ -6,8 +6,8 @@ import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, PLATFORM_FEE_PERCENT } from "@
 export const metadata: Metadata = { title: "How it works" };
 
 const creatorSteps = [
-  ["Create a listing", "Name the event or time window, where it happens, and how many people will see you — in person and online."],
-  ["Upload photos", "Front, back, sides, details. Good photos sell spots; brands need to see exactly where their logo lands."],
+  ["Create a listing", "Name the event, where it happens, and how many people will see you: in the room and online. That number is what brands are buying."],
+  ["Upload photos", "Front, back, sides, details. Brands pay for a spot they can picture. Show them exactly where the logo lands."],
   [
     "Draw your ad spots",
     AUCTIONS_ENABLED
@@ -20,11 +20,11 @@ const creatorSteps = [
       ? "Post the link. Every outbid is a small drama your followers will watch. Countdown auctions end on your deadline."
       : "Post the link. Brands buy straight from the listing page, and each sale shows up on your dashboard as a paid order.",
   ],
-  ["Deliver and prove", "Print or wrap the logos, do the event, then upload proof photos or video. When the brand approves, your payout is released."],
+  ["Wear it and prove it", "Print or wrap the logos, do the event, then upload proof photos or video. When the brand approves, your payout is released."],
 ];
 
 const brandSteps = [
-  ["Browse or search", "Filter by event, category, location, price and reach. Open a listing to see the mapped spots on real photos."],
+  ["Find the room", "Filter by event, category, location, price and reach. Open a listing and see the exact spots drawn on real photos."],
   [
     AUCTIONS_ENABLED ? "Bid or buy" : "Buy the spot",
     AUCTIONS_ENABLED
@@ -41,7 +41,7 @@ export default function HowItWorksPage() {
       <header className="space-y-3">
         <h1 className="text-4xl font-semibold tracking-tight">How Placard works</h1>
         <p className="max-w-2xl text-lg text-muted-foreground">
-          A self-serve marketplace where anyone can sell physical ad space — and brands can buy exactly the spot they want, with proof before payout.
+          You photograph what will be seen. You draw a box wherever a logo fits. You put a price on each box. A brand buys the box. You wear it, prove it, and get paid.
         </p>
       </header>
 
