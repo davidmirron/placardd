@@ -16,7 +16,7 @@ export function ProtectedByPlacard({ audience, className }: { audience: "brand" 
         ]
       : [
           { icon: Lock, text: "The brand pays up front. No invoices, no chasing." },
-          { icon: BadgeCheck, text: `Your payout is released on approval — or automatically ${PROOF_REVIEW_WINDOW_DAYS} days after you submit proof.` },
+          { icon: BadgeCheck, text: `Your payout is released on approval, or automatically ${PROOF_REVIEW_WINDOW_DAYS} days after you submit proof.` },
           { icon: LifeBuoy, text: "If an issue is raised, you see it and can put it right. Placard steps in if you can't agree." },
         ];
 
