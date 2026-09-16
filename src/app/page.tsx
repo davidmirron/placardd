@@ -17,7 +17,7 @@ export default async function HomePage() {
             <h1 className="text-5xl font-semibold tracking-tight text-balance sm:text-6xl lg:text-7xl">
               Sell the space you already carry.
             </h1>
-            <p className="max-w-lg text-xl text-muted-foreground">Photograph what you&apos;re wearing. Draw a box. Set a price.</p>
+            <p className="max-w-xl text-xl text-muted-foreground">Photograph what you&apos;re wearing. Draw a box. Set a price.</p>
             <Button asChild size="lg">
               <Link href={user?.role === "creator" ? "/sell/new" : "/signup?role=creator"}>
                 Get started <ArrowRight />
