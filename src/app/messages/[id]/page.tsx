@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
+import { MarkRead } from "./mark-read";
 import { MessageComposer } from "./message-composer";
 import { requireUser } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { getConversation } from "@/lib/queries";
+import { getConversation, readAtFor } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Conversation" };
@@ -18,8 +19,12 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   const convo = await getConversation(id, user.id);
   if (!convo) notFound();
 
+  const readAt = readAtFor(convo, user.id)?.getTime() ?? 0;
+  const firstUnreadId = convo.messages.find((m) => m.senderId !== user.id && m.createdAt.getTime() > readAt)?.id ?? null;
+
   return (
     <div className="container-page flex max-w-3xl flex-col py-8" style={{ minHeight: "calc(100vh - 3.5rem)" }}>
+      <MarkRead conversationId={convo.id} hasUnread={firstUnreadId !== null} />
       <div className="mb-4 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon-sm" aria-label="Back to messages">
           <Link href="/messages">
@@ -44,10 +49,19 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         {convo.messages.map((m) => {
           const mine = m.senderId === user.id;
           return (
-            <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", mine ? "bg-foreground text-background" : "bg-muted")}>
-                <p className="whitespace-pre-line">{m.body}</p>
-                <p className={cn("mt-1 text-[10px]", mine ? "text-background/60" : "text-muted-foreground")}>{formatDateTime(m.createdAt)}</p>
+            <div key={m.id}>
+              {m.id === firstUnreadId && (
+                <div className="my-2 flex items-center gap-3 text-[11px] font-medium tracking-wide text-brand uppercase" role="separator">
+                  <span className="h-px flex-1 bg-brand/40" />
+                  New
+                  <span className="h-px flex-1 bg-brand/40" />
+                </div>
+              )}
+              <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", mine ? "bg-foreground text-background" : "bg-muted")}>
+                  <p className="whitespace-pre-line">{m.body}</p>
+                  <p className={cn("mt-1 text-[10px]", mine ? "text-background/60" : "text-muted-foreground")}>{formatDateTime(m.createdAt)}</p>
+                </div>
               </div>
             </div>
           );

@@ -30,6 +30,10 @@ export async function startConversation(otherUserId: string, listingId?: string)
   redirect(`/messages/${id}`);
 }
 
+function readAtColumn(convo: { participantAId: string }, userId: string) {
+  return convo.participantAId === userId ? { participantAReadAt: new Date() } : { participantBReadAt: new Date() };
+}
+
 export async function sendMessage(conversationId: string, _prev: ActionState, form: FormData): Promise<ActionState> {
   const user = await requireUser();
   const body = fieldString(form, "body");
@@ -39,9 +43,23 @@ export async function sendMessage(conversationId: string, _prev: ActionState, fo
 
   await db.transaction(async (tx) => {
     await tx.insert(messages).values({ id: nanoid(12), conversationId, senderId: user.id, body: body.slice(0, 4000) });
-    await tx.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
+    // Replying implies you've read everything above, so the sender's receipt moves too.
+    await tx
+      .update(conversations)
+      .set({ lastMessageAt: new Date(), ...readAtColumn(convo, user.id) })
+      .where(eq(conversations.id, conversationId));
   });
   revalidatePath(`/messages/${conversationId}`);
   revalidatePath("/messages");
   return { success: "sent" };
+}
+
+/** Called when a thread is opened so its messages stop counting as unread everywhere. */
+export async function markConversationRead(conversationId: string): Promise<void> {
+  const user = await requireUser();
+  const convo = await db.query.conversations.findFirst({ where: eq(conversations.id, conversationId) });
+  if (!convo || (convo.participantAId !== user.id && convo.participantBId !== user.id)) return;
+  await db.update(conversations).set(readAtColumn(convo, user.id)).where(eq(conversations.id, conversationId));
+  // The unread badge lives in the root layout, so refresh from the top.
+  revalidatePath("/", "layout");
 }
