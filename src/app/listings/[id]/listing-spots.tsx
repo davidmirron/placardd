@@ -143,7 +143,7 @@ export function ListingSpots({
         </div>
         {heldUnpaid.length > 0 && (
           <p className="rounded-xl border border-brand/40 bg-brand-soft/40 px-4 py-3 text-sm">
-            You have an unpaid checkout for {heldUnpaid.map((s) => s.label).join(" + ")}. Those spots are still on sale until you pay. Buying another spot on this listing adds it to that order.
+            You have an unpaid checkout for {heldUnpaid.map((s) => s.label).join(" + ")}. {heldUnpaid.length === 1 ? "That spot is" : "Those spots are"} still on sale until you pay. Buying another spot on this listing adds it to that order.
           </p>
         )}
         {spots.length === 0 ? (
