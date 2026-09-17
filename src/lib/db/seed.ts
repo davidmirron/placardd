@@ -155,8 +155,10 @@ export async function seed() {
     eventDate: number;
     location: string;
     biddingEndsAt: number;
+    eventAttendance?: number;
     reachInPerson: number;
     reachSocial: number;
+    audienceProfile?: string;
     includes: string;
     status?: "draft" | "active" | "ended";
     photos: { id: string; url: string; label: string; width: number; height: number }[];
@@ -174,8 +176,10 @@ export async function seed() {
       eventDate: new Date(input.eventDate),
       location: input.location,
       biddingEndsAt: new Date(input.biddingEndsAt),
+      eventAttendance: input.eventAttendance ?? 0,
       reachInPerson: input.reachInPerson,
       reachSocial: input.reachSocial,
+      audienceProfile: input.audienceProfile ?? "",
       includes: input.includes,
       status: input.status ?? "active",
       createdAt,
@@ -251,8 +255,10 @@ export async function seed() {
     eventDate: now + 17 * DAY,
     location: "Austin, TX",
     biddingEndsAt: dressEnds,
+    eventAttendance: 300000,
     reachInPerson: 25000,
     reachSocial: 48200,
+    audienceProfile: "Founders, investors, press, and conference attendees at two main-stage panels and a closing party.",
     includes: "Heat-pressed logo (up to 12cm)\nTagged in 4+ outfit posts on X and Instagram\nLogo + link on my website sponsors page\nName-check in my panel intro\nRaw photos and video for your own channels",
     photos: [
       { id: "p_dress_front", url: "/demo/dress-front.svg", label: "Front", width: 800, height: 1000 },
@@ -303,8 +309,10 @@ export async function seed() {
     eventDate: now + 9 * DAY,
     location: "Berlin, Germany",
     biddingEndsAt: now + 3 * HOUR + 20 * 60 * 1000,
-    reachInPerson: 1000000,
+    eventAttendance: 1000000,
+    reachInPerson: 25000,
     reachSocial: 131000,
+    audienceProfile: "Roadside spectators, start and finish crowds, and broadcast viewers from the sub-elite corral — not the full million on the course.",
     includes: "Sublimated logo on race kit\nFeatured in race film (YouTube, 110K subs)\nTwo dedicated Instagram stories\nKit photos for your channels",
     photos: [{ id: "p_kit", url: "/demo/race-kit.svg", label: "Front", width: 800, height: 1000 }],
     zones: [
@@ -339,8 +347,10 @@ export async function seed() {
     eventDate: now + 26 * DAY,
     location: "Miami, FL",
     biddingEndsAt: now + 12 * DAY,
-    reachInPerson: 80000,
+    eventAttendance: 80000,
+    reachInPerson: 12000,
     reachSocial: 262000,
+    audienceProfile: "Art Basel visitors, gallery-hoppers, and the creator lot at the Convention Center.",
     includes: "Professionally installed vinyl panel\n7 daily TikTok vlogs with the car in frame\nParked in the creator lot at the Convention Center\nInstall and removal handled by me",
     photos: [{ id: "p_car", url: "/demo/car-side.svg", label: "Driver side", width: 1200, height: 700 }],
     zones: [
@@ -375,8 +385,10 @@ export async function seed() {
     eventDate: now + 40 * DAY,
     location: "Lisbon, Portugal",
     biddingEndsAt: now + 20 * DAY,
-    reachInPerson: 70000,
+    eventAttendance: 70000,
+    reachInPerson: 8000,
     reachSocial: 9800,
+    audienceProfile: "Founders, developers, and press in main-stage sessions and the press lounge — not the whole Web Summit floor.",
     includes: "Printed vinyl sticker (laptop) or screen print (tote)\nDaily photo of the setup in my Web Summit thread on X\nHappy to hand out your stickers too",
     photos: [
       { id: "p_laptop", url: "/demo/laptop.svg", label: "Laptop lid", width: 1200, height: 800 },
@@ -402,8 +414,10 @@ export async function seed() {
     eventDate: now - 30 * DAY,
     location: "Brussels, Belgium",
     biddingEndsAt: now - 40 * DAY,
-    reachInPerson: 1500,
+    eventAttendance: 1500,
+    reachInPerson: 400,
     reachSocial: 9800,
+    audienceProfile: "Hackers and sponsors in the main hall over 48 hours.",
     includes: "Printed vinyl sticker\nPhoto in my hackathon recap thread",
     status: "ended",
     photos: [{ id: "p_eth_laptop", url: "/demo/laptop.svg", label: "Laptop lid", width: 1200, height: 800 }],

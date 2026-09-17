@@ -23,7 +23,7 @@ export default async function NewListingPage() {
       <div className="mb-8 space-y-2">
         <p className="text-sm font-medium text-brand">Step 1 of 3 · Details</p>
         <h1 className="text-3xl font-semibold tracking-tight">List a spot</h1>
-        <p className="text-muted-foreground">Describe where you&apos;ll be seen. Next you&apos;ll add photos and draw the ad spots on them.</p>
+        <p className="text-muted-foreground">Describe where you&apos;ll be seen. Brands need the event size and an honest estimate of who will actually see you — next you&apos;ll add photos and draw the ad spots.</p>
       </div>
       <ListingForm action={createListing} submitLabel="Continue to photos" />
     </div>

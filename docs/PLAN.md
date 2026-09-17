@@ -23,7 +23,7 @@ The first wedge is **events** (conferences, races, festivals, launches). Events 
 
 ## 2. Core loop
 
-1. Seller creates a listing for an event or time window: title, category (outfit, vehicle, accessory, space, other), location, event date, bidding deadline, expected reach (in-person + social), and what is included (printing, social posts, tagging).
+1. Seller creates a listing for an event or time window: title, category (outfit, vehicle, accessory, space, other), location, event date, bidding deadline, expected reach (event attendance vs who will actually see you, plus social), optional audience profile, and what is included (printing, social posts, tagging).
 2. Seller uploads photos (front / back / side / detail).
 3. Seller draws **ad zones** on the photos — rectangles with a label, size hint, sale type, and pricing rules.
 4. Listing goes live. Brands browse, filter, open the listing, see zones overlaid on the photos.
@@ -114,7 +114,7 @@ Money is stored as integer cents in USD. Zone coordinates are stored as fraction
 - **Doubling auctions are a feature, not a gimmick.** They make outbidding a visible, shareable event. Every listing page shows the rule up front.
 - **Proof is mandatory for payout.** This is the trust mechanism that makes brands willing to pay strangers. Sellers know it before listing.
 - **Platform holds funds until proof.** Escrow-like flow reduces the fraud surface on both sides.
-- **Reach is self-reported for now.** It is a filter and a signal, not a guarantee. Verified reach (social API connections, event attendance data) is a later trust layer.
+- **Reach is self-reported for now.** Event attendance (how big the event is) is separate from in-person impressions (who will actually see the wearer). Marketplace filters use impressions + social, not footfall. Verified reach is a later trust layer.
 - **Roles are explicit.** A user is a Creator or a Brand. It keeps the UI focused. Switching or dual roles is a settings feature later.
 
 ## 6. Deferred (post-validation roadmap)

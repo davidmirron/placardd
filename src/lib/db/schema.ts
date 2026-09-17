@@ -84,8 +84,12 @@ export const listings = sqliteTable(
     eventDate: timestamp("event_date"),
     location: text("location").notNull().default(""),
     biddingEndsAt: timestamp("bidding_ends_at").notNull(),
+    // Total people at the event (context). Not the same as who will see the logo.
+    eventAttendance: integer("event_attendance").notNull().default(0),
+    // Face-to-face impressions — the in-person number brands and filters use.
     reachInPerson: integer("reach_in_person").notNull().default(0),
     reachSocial: integer("reach_social").notNull().default(0),
+    audienceProfile: text("audience_profile").notNull().default(""),
     includes: text("includes").notNull().default(""),
     status: text("status", { enum: LISTING_STATUSES }).notNull().default("draft"),
     createdAt: timestamp("created_at").notNull().default(now),

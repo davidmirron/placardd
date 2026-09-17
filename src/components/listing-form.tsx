@@ -95,18 +95,44 @@ export function ListingForm({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Reach</h2>
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">Audience & exposure</h2>
+          <p className="text-sm text-muted-foreground">
+            Event size is context. Brands care about how many people will actually see the logo on you — a 200,000-person conference or a million marathon spectators is not the same as 20,000 face-to-face impressions.
+          </p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="reachInPerson">People who will see you in person</Label>
-            <Input id="reachInPerson" name="reachInPerson" type="number" min={0} defaultValue={listing?.reachInPerson ?? ""} placeholder="8000" />
-            <p className="text-xs text-muted-foreground">Event attendance, spectators, foot traffic.</p>
+            <Label htmlFor="eventAttendance">
+              Event attendance <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input id="eventAttendance" name="eventAttendance" inputMode="numeric" defaultValue={listing?.eventAttendance || ""} placeholder="200000" />
+            <p className="text-xs text-muted-foreground">Total people at the event — visitors, runners, spectators.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="reachInPerson">People who will see you</Label>
+            <Input id="reachInPerson" name="reachInPerson" inputMode="numeric" defaultValue={listing?.reachInPerson || ""} placeholder="20000" />
+            <p className="text-xs text-muted-foreground">Your honest estimate of face-to-face impressions. If you have a range, enter the lower number.</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="reachSocial">Social reach</Label>
-            <Input id="reachSocial" name="reachSocial" type="number" min={0} defaultValue={listing?.reachSocial ?? ""} placeholder="25000" />
+            <Input id="reachSocial" name="reachSocial" inputMode="numeric" defaultValue={listing?.reachSocial || ""} placeholder="25000" />
             <p className="text-xs text-muted-foreground">Followers who will see the posts you promise.</p>
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="audienceProfile">
+            Who they are <span className="font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Textarea
+            id="audienceProfile"
+            name="audienceProfile"
+            maxLength={500}
+            rows={3}
+            defaultValue={listing?.audienceProfile ?? ""}
+            placeholder="1,900+ VCs, 1,800+ global tech brands, and C-suite visitors over 4 days."
+          />
+          <p className="text-xs text-muted-foreground">A short profile of the room — not a second headcount.</p>
         </div>
       </section>
 

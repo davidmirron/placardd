@@ -105,6 +105,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Users className="size-4" /> {formatReach(totalReach)} est. reach
+              {listing.eventAttendance > 0 && ` · ${formatReach(listing.eventAttendance)} at the event`}
             </span>
           </div>
         </div>
@@ -197,18 +198,27 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
           </div>
 
           <div className="rounded-2xl border p-5 text-sm">
-            <h3 className="mb-2 font-semibold">Reach breakdown</h3>
+            <h3 className="mb-2 font-semibold">Audience & exposure</h3>
             <dl className="space-y-1.5 text-muted-foreground">
-              <div className="flex justify-between">
-                <dt>In person</dt>
+              <div className="flex justify-between gap-4">
+                <dt>Will see you</dt>
                 <dd className="font-medium text-foreground">{formatReach(listing.reachInPerson)}</dd>
               </div>
-              <div className="flex justify-between">
+              {listing.eventAttendance > 0 && (
+                <div className="flex justify-between gap-4">
+                  <dt>Event attendance</dt>
+                  <dd className="font-medium text-foreground">{formatReach(listing.eventAttendance)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-4">
                 <dt>Social</dt>
                 <dd className="font-medium text-foreground">{formatReach(listing.reachSocial)}</dd>
               </div>
             </dl>
-            <p className="mt-3 text-xs text-muted-foreground">Reach is self-reported by the creator. Verified social reach is on our roadmap.</p>
+            {listing.audienceProfile ? <p className="mt-3 text-foreground/90">{listing.audienceProfile}</p> : null}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Event attendance is how big the room is. Will see you is who actually walks past — not the whole marathon or conference. Numbers are self-reported.
+            </p>
           </div>
 
           <ProtectedByPlacard audience={isOwner ? "creator" : "brand"} />
