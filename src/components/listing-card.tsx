@@ -3,7 +3,7 @@ import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/countdown";
 import { UserAvatar } from "@/components/user-avatar";
-import { AUCTIONS_ENABLED, CATEGORY_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, EVENT_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatMoney, formatReach, pluralize } from "@/lib/format";
 import type { ListingSummary } from "@/lib/queries";
 
@@ -22,7 +22,7 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
           <div className="flex size-full items-center justify-center text-sm text-muted-foreground">No photo yet</div>
         )}
         <div className="absolute top-3 left-3 flex gap-1.5">
-          <Badge className="bg-white/90 text-foreground backdrop-blur">{CATEGORY_LABELS[listing.category]}</Badge>
+          <Badge className="bg-white/90 text-foreground backdrop-blur">{EVENT_TYPE_LABELS[listing.eventType]}</Badge>
         </div>
         <div className="absolute right-3 bottom-3 rounded-full bg-black/75 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
           <Countdown endsAt={listing.soonestEnd} compact className="text-white" /> left

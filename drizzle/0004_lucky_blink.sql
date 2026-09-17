@@ -1,0 +1,1 @@
+ALTER TABLE `listings` ADD `event_type` text DEFAULT 'other' NOT NULL;

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { BID_RULES, LISTING_CATEGORIES, listings, photos, SALE_TYPES, zones } from "@/lib/db/schema";
+import { BID_RULES, EVENT_TYPES, LISTING_CATEGORIES, listings, photos, SALE_TYPES, zones } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
 import { AUCTIONS_ENABLED } from "@/lib/constants";
 import { dollarsToCents, fieldCount, fieldString, type ActionState } from "./types";
@@ -17,6 +17,7 @@ const listingSchema = z.object({
   title: z.string().min(4, "Give your listing a clear title.").max(120),
   description: z.string().max(4000),
   category: z.enum(LISTING_CATEGORIES),
+  eventType: z.enum(EVENT_TYPES, { error: "What kind of event is this?" }),
   eventName: z.string().max(120),
   eventDate: z.string(),
   location: z.string().min(2, "Where will this be seen?").max(120),
@@ -33,6 +34,7 @@ function parseListingForm(form: FormData) {
     title: fieldString(form, "title"),
     description: fieldString(form, "description"),
     category: fieldString(form, "category"),
+    eventType: fieldString(form, "eventType"),
     eventName: fieldString(form, "eventName"),
     eventDate: fieldString(form, "eventDate"),
     location: fieldString(form, "location"),
@@ -98,6 +100,7 @@ export async function createListing(_prev: ActionState, form: FormData): Promise
     title: data.title,
     description: data.description,
     category: data.category,
+    eventType: data.eventType,
     eventName: data.eventName || null,
     eventDate: toDate(data.eventDate),
     location: data.location,
@@ -129,6 +132,7 @@ export async function updateListing(listingId: string, _prev: ActionState, form:
         title: data.title,
         description: data.description,
         category: data.category,
+        eventType: data.eventType,
         eventName: data.eventName || null,
         eventDate: toDate(data.eventDate),
         location: data.location,
