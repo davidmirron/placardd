@@ -11,7 +11,7 @@ import { ZoneStatusBadge } from "@/components/status-badge";
 import { ZoneOverlay } from "@/components/zone-overlay";
 import { buyNowAction, placeBidAction } from "@/lib/actions/bids";
 import { AUCTIONS_ENABLED, BID_RULE_LABELS } from "@/lib/constants";
-import type { BidRule, SaleType, ZoneStatus } from "@/lib/db/schema";
+import type { BidRule, OrderStatus, SaleType, ZoneStatus } from "@/lib/db/schema";
 import { formatMoney, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +39,7 @@ export type SpotView = {
   live: boolean;
   orderId: string | null;
   orderBuyerId: string | null;
+  orderStatus: OrderStatus | null;
   bids: { id: string; amountCents: number; at: number; bidder: string; bidderId: string }[];
 };
 
@@ -76,16 +77,27 @@ export function ListingSpots({
 }) {
   const [photoId, setPhotoId] = useState(photos[0]?.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pickedIds, setPickedIds] = useState<string[]>([]);
+  const [bundleState, bundleAction] = useActionState(buyNowAction, undefined);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const photo = photos.find((p) => p.id === photoId) ?? photos[0];
   const zonesOnPhoto = useMemo(() => spots.filter((s) => s.photoId === photo?.id), [spots, photo?.id]);
+  const canBundle = viewer?.role === "brand" && listingActive && spots.filter((s) => s.live && s.status === "open" && (!AUCTIONS_ENABLED || s.saleType !== "auction")).length >= 2;
+  const pickedSpots = spots.filter((s) => pickedIds.includes(s.id));
+  const pickedTotal = pickedSpots.reduce((sum, s) => sum + (buyNowPrice(s) ?? 0), 0);
+  const heldUnpaid = viewer ? spots.filter((s) => s.orderBuyerId === viewer.id && s.orderStatus === "pending_payment") : [];
 
   const selectSpot = (id: string, scroll = true) => {
     setSelectedId(id);
     const spot = spots.find((s) => s.id === id);
     if (spot && spot.photoId !== photo?.id) setPhotoId(spot.photoId);
     if (scroll) cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
+  const togglePicked = (id: string) => {
+    setPickedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+    selectSpot(id, false);
   };
 
   if (photos.length === 0) {
@@ -99,6 +111,7 @@ export function ListingSpots({
           photo={photo!}
           zones={zonesOnPhoto.map((s) => ({ id: s.id, number: s.number, label: s.label, x: s.x, y: s.y, w: s.w, h: s.h, status: s.status }))}
           selectedId={selectedId}
+          selectedIds={pickedIds}
           onSelect={(id) => selectSpot(id)}
           className="ring-1 ring-black/5"
         />
@@ -124,8 +137,13 @@ export function ListingSpots({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{pluralize(spots.length, "ad spot")}</h2>
-          <p className="text-sm text-muted-foreground">Tap a spot on the photo to jump to it</p>
+          <p className="text-sm text-muted-foreground">{canBundle ? "Tick the spots you want, then buy them together" : "Tap a spot on the photo to jump to it"}</p>
         </div>
+        {heldUnpaid.length > 0 && (
+          <p className="rounded-xl border border-brand/40 bg-brand-soft/40 px-4 py-3 text-sm">
+            You have an unpaid order for {heldUnpaid.map((s) => s.label).join(" + ")}. Buying another spot on this listing adds it to that order before you pay.
+          </p>
+        )}
         {spots.length === 0 ? (
           <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No spots mapped yet.</p>
         ) : (
@@ -137,10 +155,40 @@ export function ListingSpots({
                   cardRefs.current[s.id] = el;
                 }}
               >
-                <SpotCard spot={s} listingId={listingId} viewer={viewer} isOwner={isOwner} listingActive={listingActive} selected={s.id === selectedId} onSelect={() => selectSpot(s.id, false)} />
+                <SpotCard
+                  spot={s}
+                  listingId={listingId}
+                  viewer={viewer}
+                  isOwner={isOwner}
+                  listingActive={listingActive}
+                  selected={s.id === selectedId}
+                  onSelect={() => selectSpot(s.id, false)}
+                  canPick={canBundle && s.live && s.status === "open"}
+                  picked={pickedIds.includes(s.id)}
+                  onTogglePick={() => togglePicked(s.id)}
+                  addToOrder={heldUnpaid.length > 0 && s.orderStatus !== "pending_payment"}
+                />
               </div>
             ))}
           </div>
+        )}
+        {canBundle && pickedIds.length >= 2 && (
+          <form action={bundleAction} className="sticky bottom-4 flex flex-col gap-3 rounded-2xl border border-brand/40 bg-background/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <input type="hidden" name="listingId" value={listingId} />
+            {pickedIds.map((id) => (
+              <input key={id} type="hidden" name="zoneId" value={id} />
+            ))}
+            <div>
+              <p className="text-sm">
+                <span className="font-medium">{pluralize(pickedIds.length, "spot")} selected</span>
+                <span className="text-muted-foreground"> · one order, one checkout</span>
+              </p>
+              <FormMessage state={bundleState} className="mt-1" />
+            </div>
+            <SubmitButton pendingText="Heading to checkout…">
+              <Zap /> Buy together {formatMoney(pickedTotal)}
+            </SubmitButton>
+          </form>
         )}
       </section>
     </div>
@@ -155,6 +203,10 @@ function SpotCard({
   listingActive,
   selected,
   onSelect,
+  canPick,
+  picked,
+  onTogglePick,
+  addToOrder,
 }: {
   spot: SpotView;
   listingId: string;
@@ -163,6 +215,10 @@ function SpotCard({
   listingActive: boolean;
   selected: boolean;
   onSelect: () => void;
+  canPick: boolean;
+  picked: boolean;
+  onTogglePick: () => void;
+  addToOrder: boolean;
 }) {
   const live = spot.live && listingActive;
   // A legacy auction spot is shown as a plain purchase when auctions are switched off.
@@ -176,11 +232,21 @@ function SpotCard({
   return (
     <div
       onClick={onSelect}
-      className={cn("rounded-2xl border p-5 transition-colors", selected ? "border-brand ring-2 ring-brand/30" : "hover:border-foreground/30")}
+      className={cn("rounded-2xl border p-5 transition-colors", selected || picked ? "border-brand ring-2 ring-brand/30" : "hover:border-foreground/30")}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
-          <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold", selected ? "bg-brand text-brand-foreground" : "bg-foreground text-background")}>
+          {canPick && (
+            <input
+              type="checkbox"
+              checked={picked}
+              onChange={onTogglePick}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Select ${spot.label}`}
+              className="mt-1.5 size-4 shrink-0 accent-brand"
+            />
+          )}
+          <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold", selected || picked ? "bg-brand text-brand-foreground" : "bg-foreground text-background")}>
             {spot.number}
           </span>
           <div className="min-w-0 space-y-1">
@@ -281,7 +347,7 @@ function SpotCard({
         ) : viewer.role !== "brand" ? (
           <p className="text-sm text-muted-foreground">Only brand accounts can {isAuction ? "bid or " : ""}buy. Create a brand account to take part.</p>
         ) : (
-          <BidControls key={`${minBid}-${instant ?? 0}`} spot={spot} listingId={listingId} minBid={minBid} instant={instant} leading={!!leading} isAuction={isAuction} />
+          <BidControls key={`${minBid}-${instant ?? 0}`} spot={spot} listingId={listingId} minBid={minBid} instant={instant} leading={!!leading} isAuction={isAuction} addToOrder={addToOrder} />
         )}
       </div>
     </div>
@@ -295,6 +361,7 @@ function BidControls({
   instant,
   leading,
   isAuction,
+  addToOrder,
 }: {
   spot: SpotView;
   listingId: string;
@@ -302,6 +369,7 @@ function BidControls({
   instant: number | null;
   leading: boolean;
   isAuction: boolean;
+  addToOrder: boolean;
 }) {
   const [bidState, bidAction] = useActionState(placeBidAction, undefined);
   const [buyState, buyAction] = useActionState(buyNowAction, undefined);
@@ -333,13 +401,17 @@ function BidControls({
             </SubmitButton>
           </form>
         )}
-        {!isAuction && <p className="text-sm text-muted-foreground">You&apos;ll be taken to checkout. The spot is yours once payment clears.</p>}
+        {!isAuction && (
+          <p className="text-sm text-muted-foreground">
+            {addToOrder ? "This gets added to your unpaid order on this listing." : "You'll be taken to checkout. The spot is yours once payment clears."}
+          </p>
+        )}
         {instant != null && (
           <form action={buyAction}>
             <input type="hidden" name="zoneId" value={spot.id} />
             <input type="hidden" name="listingId" value={listingId} />
-            <SubmitButton variant={isAuction ? "outline" : "default"} pendingText="Heading to checkout…">
-              <Zap /> Buy now {formatMoney(instant)}
+            <SubmitButton variant={isAuction ? "outline" : "default"} pendingText={addToOrder ? "Adding to order…" : "Heading to checkout…"}>
+              <Zap /> {addToOrder ? "Add to order" : "Buy now"} {formatMoney(instant)}
             </SubmitButton>
           </form>
         )}

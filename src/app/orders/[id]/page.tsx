@@ -16,6 +16,7 @@ import type { OrderStatus } from "@/lib/db/schema";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { activeProvider, confirmStripeSession } from "@/lib/payments";
 import { getOrderForUser } from "@/lib/queries";
+import { orderSpotHeading } from "@/lib/order-spots";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Order" };
@@ -44,13 +45,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
   const stageIndex = TIMELINE.indexOf(order.status);
   const reviewDeadline = order.proofSubmittedAt ? new Date(order.proofSubmittedAt.getTime() + PROOF_REVIEW_WINDOW_MS) : null;
   const message = startConversation.bind(null, counterpart.id, order.listingId);
+  const spots = order.spots;
+  const spotHeading = orderSpotHeading(spots.map((s) => s.label));
   const closed = order.status === "cancelled" || order.status === "refunded";
 
   return (
     <div className="container-page max-w-5xl space-y-8 py-10">
       {sp.won && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-          You got the spot. Complete payment to lock it in, then upload your logo and placement notes.
+          You got the {spots.length > 1 ? "spots" : "spot"}. Complete payment to lock {spots.length > 1 ? "them" : "it"} in, then upload your logo and placement notes.
         </div>
       )}
       {sp.paid && (
@@ -60,14 +63,14 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
       )}
       {sp.cancelled && order.status === "pending_payment" && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Checkout was cancelled. The spot is held for you for a short while — pay below to keep it, or it goes back on sale.
+          Checkout was cancelled. {spots.length > 1 ? "The spots are" : "The spot is"} held for you for a short while — pay below to keep {spots.length > 1 ? "them" : "it"}, or {spots.length > 1 ? "they go" : "it goes"} back on sale.
         </div>
       )}
 
       <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">Order {order.id}</p>
-          <h1 className="text-3xl font-semibold tracking-tight">{order.zone.label}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{spotHeading}</h1>
           <p className="text-muted-foreground">
             on{" "}
             <Link href={`/listings/${order.listingId}`} className="font-medium text-foreground underline-offset-4 hover:underline">
@@ -117,7 +120,9 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-8">
-          {isBuyer && order.status === "pending_payment" && <PayPanel orderId={order.id} amountCents={order.amountCents} provider={activeProvider()} />}
+          {isBuyer && order.status === "pending_payment" && (
+            <PayPanel orderId={order.id} amountCents={order.amountCents} provider={activeProvider()} listingId={order.listingId} spotCount={spots.length} />
+          )}
           {!isBuyer && order.status === "pending_payment" && (
             <div className="rounded-2xl border p-5 text-sm text-muted-foreground">Waiting for {counterpartName} to pay. You&apos;ll be able to upload proof once payment lands.</div>
           )}
@@ -158,31 +163,50 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
             </section>
           )}
 
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold">The spot</h2>
-            <div className="grid gap-4 sm:grid-cols-[240px_minmax(0,1fr)]">
-              <ZoneOverlay
-                photo={{ url: order.zone.photo.url, label: order.zone.photo.label, width: order.zone.photo.width, height: order.zone.photo.height }}
-                zones={[{ id: order.zone.id, number: 1, label: order.zone.label, x: order.zone.x, y: order.zone.y, w: order.zone.w, h: order.zone.h, status: "sold" }]}
-                interactive={false}
-              />
-              <div className="space-y-3 text-sm">
-                {order.zone.description && <p className="text-muted-foreground">{order.zone.description}</p>}
-                {order.listing.includes && (
-                  <div>
-                    <p className="mb-1 font-medium">Included</p>
-                    <ul className="list-inside list-disc text-muted-foreground">
-                      {order.listing.includes
-                        .split("\n")
-                        .filter(Boolean)
-                        .map((i) => (
-                          <li key={i}>{i}</li>
-                        ))}
-                    </ul>
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">{spots.length > 1 ? "The spots" : "The spot"}</h2>
+            {Array.from(new Map(spots.map((s) => [s.photo.id, s.photo])).values()).map((photo) => {
+              const onPhoto = spots.filter((s) => s.photo.id === photo.id);
+              return (
+                <div key={photo.id} className="grid gap-4 sm:grid-cols-[240px_minmax(0,1fr)]">
+                  <ZoneOverlay
+                    photo={{ url: photo.url, label: photo.label, width: photo.width, height: photo.height }}
+                    zones={onPhoto.map((s) => ({
+                      id: s.id,
+                      number: spots.findIndex((x) => x.id === s.id) + 1,
+                      label: s.label,
+                      x: s.x,
+                      y: s.y,
+                      w: s.w,
+                      h: s.h,
+                      status: "sold",
+                    }))}
+                    interactive={false}
+                  />
+                  <div className="space-y-3 text-sm">
+                    {onPhoto.map((s) => (
+                      <div key={s.id}>
+                        <p className="font-medium">{s.label}</p>
+                        {s.description && <p className="text-muted-foreground">{s.description}</p>}
+                      </div>
+                    ))}
+                    {photo.id === spots[0]?.photo.id && order.listing.includes && (
+                      <div>
+                        <p className="mb-1 font-medium">Included</p>
+                        <ul className="list-inside list-disc text-muted-foreground">
+                          {order.listing.includes
+                            .split("\n")
+                            .filter(Boolean)
+                            .map((i) => (
+                              <li key={i}>{i}</li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              );
+            })}
           </section>
 
           <AssetsPanel

@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { BadgeCheck, Clock, CreditCard, Flag, LifeBuoy, MessageSquare, Star, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,15 +33,35 @@ function useRunner() {
   return { state, pending, run, router };
 }
 
-export function PayPanel({ orderId, amountCents, provider }: { orderId: string; amountCents: number; provider: "stripe" | "mock" }) {
+export function PayPanel({
+  orderId,
+  amountCents,
+  provider,
+  listingId,
+  spotCount,
+}: {
+  orderId: string;
+  amountCents: number;
+  provider: "stripe" | "mock";
+  listingId: string;
+  spotCount: number;
+}) {
   const { state, pending, run } = useRunner();
+  const spotsWord = spotCount > 1 ? "spots" : "spot";
   return (
     <section className="rounded-2xl border border-brand/40 bg-brand-soft/40 p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Pay {formatMoney(amountCents)} to lock in your spot</h2>
+          <h2 className="text-lg font-semibold">Pay {formatMoney(amountCents)} to lock in your {spotsWord}</h2>
           <p className="text-sm text-muted-foreground">
-            {provider === "stripe" ? "You'll be taken to Stripe's secure checkout." : "Test mode: no card needed. Stripe Checkout switches on when a key is configured."} Unpaid spots are released back to the marketplace.
+            {provider === "stripe" ? "You'll be taken to Stripe's secure checkout." : "Test mode: no card needed. Stripe Checkout switches on when a key is configured."} Unpaid {spotsWord} are released back to the marketplace.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Want another logo on this listing?{" "}
+            <Link href={`/listings/${listingId}`} className="font-medium text-foreground underline underline-offset-4">
+              Add it to this order
+            </Link>{" "}
+            before you pay.
           </p>
         </div>
         <Button size="lg" disabled={pending} onClick={() => run(() => startCheckout(orderId))}>

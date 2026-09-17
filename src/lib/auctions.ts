@@ -11,6 +11,7 @@ import {
   REVIEW_REVEAL_WINDOW_MS,
 } from "@/lib/constants";
 import { splitAmount } from "@/lib/money";
+import { allOrderZoneIds, parseAdditionalZoneIds, serializeAdditionalZoneIds } from "@/lib/order-spots";
 
 export class AuctionError extends Error {}
 
@@ -38,6 +39,13 @@ export function isZoneLive(zone: Pick<Zone, "status" | "endsAt">, now = Date.now
   return zone.status === "open" && zone.endsAt.getTime() > now;
 }
 
+async function claimZone(tx: Tx, zone: Zone, buyerId: string, amountCents: number) {
+  await tx
+    .update(zones)
+    .set({ status: "sold", currentBidCents: amountCents, currentBidderId: buyerId })
+    .where(eq(zones.id, zone.id));
+}
+
 async function createOrder(tx: Tx, zone: Zone, buyerId: string, amountCents: number, sellerId: string) {
   const split = splitAmount(amountCents);
   const id = nanoid(14);
@@ -50,11 +58,37 @@ async function createOrder(tx: Tx, zone: Zone, buyerId: string, amountCents: num
     ...split,
     status: "pending_payment",
   });
-  await tx
-    .update(zones)
-    .set({ status: "sold", currentBidCents: amountCents, currentBidderId: buyerId })
-    .where(eq(zones.id, zone.id));
+  await claimZone(tx, zone, buyerId, amountCents);
   return id;
+}
+
+async function addZonesToPendingOrder(
+  tx: Tx,
+  order: { id: string; zoneId: string; additionalZoneIds: string; amountCents: number },
+  extra: Zone[],
+  buyerId: string,
+) {
+  const held = new Set(allOrderZoneIds(order));
+  const fresh = extra.filter((z) => !held.has(z.id));
+  if (fresh.length === 0) return { orderId: order.id, amountCents: order.amountCents };
+  let added = 0;
+  const addedIds: string[] = [];
+  for (const zone of fresh) {
+    const price = buyNowPrice(zone);
+    if (price == null) throw new AuctionError("This spot doesn't offer instant purchase.");
+    await claimZone(tx, zone, buyerId, price);
+    added += price;
+    addedIds.push(zone.id);
+  }
+  const split = splitAmount(order.amountCents + added);
+  await tx
+    .update(orders)
+    .set({
+      ...split,
+      additionalZoneIds: serializeAdditionalZoneIds([...parseAdditionalZoneIds(order.additionalZoneIds), ...addedIds]),
+    })
+    .where(eq(orders.id, order.id));
+  return { orderId: order.id, amountCents: split.amountCents };
 }
 
 export async function placeBid(zoneId: string, bidderId: string, amountCents: number) {
@@ -104,17 +138,41 @@ export async function placeBid(zoneId: string, bidderId: string, amountCents: nu
   });
 }
 
-export async function buyNow(zoneId: string, buyerId: string) {
+export async function buyNow(zoneIds: string[], buyerId: string) {
+  const ids = [...new Set(zoneIds.filter(Boolean))];
+  if (ids.length === 0) throw new AuctionError("Pick at least one spot.");
+
   return db.transaction(async (tx) => {
-    const zone = await tx.query.zones.findFirst({ where: eq(zones.id, zoneId), with: { listing: true } });
-    if (!zone) throw new AuctionError("This spot no longer exists.");
-    if (zone.listing.status !== "active") throw new AuctionError("This listing is not accepting orders.");
-    if (zone.listing.sellerId === buyerId) throw new AuctionError("You can't buy your own listing.");
-    if (!isZoneLive(zone)) throw new AuctionError("This spot is no longer available.");
-    const price = buyNowPrice(zone);
-    if (price == null) throw new AuctionError("This spot doesn't offer instant purchase.");
-    const orderId = await createOrder(tx, zone, buyerId, price, zone.listing.sellerId);
-    return { orderId, amountCents: price };
+    const picked = await tx.query.zones.findMany({
+      where: inArray(zones.id, ids),
+      with: { listing: true },
+    });
+    const byId = new Map(picked.map((z) => [z.id, z]));
+    const ordered = ids.map((id) => byId.get(id));
+    if (ordered.some((z) => !z)) throw new AuctionError("A spot no longer exists.");
+    const spots = ordered as typeof picked;
+
+    const listingId = spots[0].listingId;
+    for (const zone of spots) {
+      if (zone.listingId !== listingId) throw new AuctionError("Spots have to be on the same listing.");
+      if (zone.listing.status !== "active") throw new AuctionError("This listing is not accepting orders.");
+      if (zone.listing.sellerId === buyerId) throw new AuctionError("You can't buy your own listing.");
+      if (!isZoneLive(zone)) throw new AuctionError(`${zone.label} is no longer available.`);
+      if (buyNowPrice(zone) == null) throw new AuctionError("This spot doesn't offer instant purchase.");
+    }
+
+    const pending = await tx.query.orders.findFirst({
+      where: and(eq(orders.buyerId, buyerId), eq(orders.listingId, listingId), eq(orders.status, "pending_payment")),
+    });
+    if (pending) return addZonesToPendingOrder(tx, pending, spots, buyerId);
+
+    const [first, ...rest] = spots;
+    const price = buyNowPrice(first)!;
+    const orderId = await createOrder(tx, first, buyerId, price, first.listing.sellerId);
+    if (rest.length === 0) return { orderId, amountCents: price };
+    const created = await tx.query.orders.findFirst({ where: eq(orders.id, orderId) });
+    if (!created) throw new AuctionError("Order was not created.");
+    return addZonesToPendingOrder(tx, created, rest, buyerId);
   });
 }
 
@@ -160,7 +218,9 @@ export async function settleExpired(listingId?: string) {
     if (stale.length) {
       const ids = stale.map((o) => o.id);
       await tx.update(orders).set({ status: "cancelled" }).where(inArray(orders.id, ids));
-      for (const o of stale) await releaseZone(tx, o.zoneId, now);
+      for (const o of stale) {
+        for (const zoneId of allOrderZoneIds(o)) await releaseZone(tx, zoneId, now);
+      }
       summary.ordersExpired += ids.length;
     }
 

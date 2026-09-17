@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const session = event.data.object;
     const orderId = session.metadata?.orderId;
     if (orderId && session.payment_status === "paid") {
-      await markOrderPaid(orderId, "stripe", typeof session.payment_intent === "string" ? session.payment_intent : session.id);
+      await markOrderPaid(orderId, "stripe", typeof session.payment_intent === "string" ? session.payment_intent : session.id, session.amount_total ?? undefined);
     }
   }
 

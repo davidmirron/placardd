@@ -17,6 +17,7 @@ export function ZoneOverlay({
   photo,
   zones,
   selectedId,
+  selectedIds,
   onSelect,
   className,
   interactive = true,
@@ -24,6 +25,7 @@ export function ZoneOverlay({
   photo: { url: string; label: string; width: number; height: number };
   zones: OverlayZone[];
   selectedId?: string | null;
+  selectedIds?: string[];
   onSelect?: (id: string) => void;
   className?: string;
   interactive?: boolean;
@@ -34,7 +36,7 @@ export function ZoneOverlay({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={photo.url} alt={photo.label} className="absolute inset-0 size-full object-cover" draggable={false} />
       {zones.map((z) => {
-        const selected = z.id === selectedId;
+        const selected = z.id === selectedId || !!selectedIds?.includes(z.id);
         const sold = z.status === "sold";
         const gone = z.status === "unsold" || z.status === "cancelled";
         return (
