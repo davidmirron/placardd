@@ -36,6 +36,9 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
   const counterpartName = counterpart.companyName ?? counterpart.name;
   const assets = order.files.filter((f) => f.kind === "asset");
   const proofs = order.files.filter((f) => f.kind === "proof");
+  const proofFiles = proofs.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }));
+  const showProofGallery = proofs.length > 0 && (isBuyer || (order.status !== "paid" && order.status !== "disputed"));
+  const proofsInReviewPanel = isBuyer && order.status === "proof_submitted";
   const myReview = order.reviews.find((r) => r.authorId === user.id);
   const theirReview = order.reviews.find((r) => r.authorId !== user.id);
   const stageIndex = TIMELINE.indexOf(order.status);
@@ -132,12 +135,28 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
           )}
 
           {!isBuyer && (order.status === "paid" || order.status === "disputed") && (
-            <ProofPanel orderId={order.id} proofs={proofs.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))} disputed={order.status === "disputed"} />
+            <ProofPanel orderId={order.id} proofs={proofFiles} disputed={order.status === "disputed"} />
           )}
           {!isBuyer && order.status === "proof_submitted" && order.proofSubmittedAt && reviewDeadline && (
             <ProofSentPanel submittedAt={order.proofSubmittedAt} deadline={reviewDeadline} brandName={counterpartName} payoutCents={order.sellerNetCents} />
           )}
-          {isBuyer && order.status === "proof_submitted" && reviewDeadline && <ReviewProofPanel orderId={order.id} deadline={reviewDeadline} creatorName={counterpartName} />}
+          {isBuyer && order.status === "proof_submitted" && reviewDeadline && (
+            <ReviewProofPanel
+              orderId={order.id}
+              deadline={reviewDeadline}
+              creatorName={counterpartName}
+              proofs={proofFiles}
+              submittedAt={order.proofSubmittedAt}
+            />
+          )}
+
+          {showProofGallery && !proofsInReviewPanel && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Proof of delivery</h2>
+              <FileGrid files={proofFiles} />
+              {order.proofSubmittedAt && <p className="text-xs text-muted-foreground">Submitted {formatDateTime(order.proofSubmittedAt)}</p>}
+            </section>
+          )}
 
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">The spot</h2>
@@ -173,14 +192,6 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
             notes={order.brandNotes}
             assets={assets.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))}
           />
-
-          {proofs.length > 0 && (isBuyer || (order.status !== "paid" && order.status !== "disputed")) && (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Proof of delivery</h2>
-              <FileGrid files={proofs.map((f) => ({ id: f.id, url: f.url, mime: f.mime, note: f.note }))} />
-              {order.proofSubmittedAt && <p className="text-xs text-muted-foreground">Submitted {formatDateTime(order.proofSubmittedAt)}</p>}
-            </section>
-          )}
 
           {order.status === "completed" && (
             <ReviewPanel
