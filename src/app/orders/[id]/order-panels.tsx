@@ -54,7 +54,7 @@ export function PayPanel({
         <div>
           <h2 className="text-lg font-semibold">Pay {formatMoney(amountCents)} to lock in your {spotsWord}</h2>
           <p className="text-sm text-muted-foreground">
-            {provider === "stripe" ? "You'll be taken to Stripe's secure checkout." : "Test mode: no card needed. Stripe Checkout switches on when a key is configured."} Unpaid {spotsWord} are released back to the marketplace.
+            {provider === "stripe" ? "You'll be taken to Stripe's secure checkout." : "Test mode: no card needed. Stripe Checkout switches on when a key is configured."} {spotsWord === "spots" ? "These spots stay" : "The spot stays"} on sale until payment clears. If someone else pays first, this checkout will not go through.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             Want another logo on this listing?{" "}

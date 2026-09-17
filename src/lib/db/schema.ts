@@ -58,6 +58,9 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 /** Orders in these states no longer hold their zone, so the zone can be sold again. */
 export const RELEASED_ORDER_STATUSES: readonly OrderStatus[] = ["cancelled", "refunded"];
 
+/** Unpaid checkouts do not hold a spot. Only a paid order does. */
+export const HOLDING_ORDER_STATUSES: readonly OrderStatus[] = ["paid", "proof_submitted", "completed", "disputed"];
+
 const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
 const now = sql`(unixepoch('subsec') * 1000)`;
 
@@ -214,11 +217,10 @@ export const orders = sqliteTable(
   (t) => [
     index("orders_buyer_idx").on(t.buyerId),
     index("orders_seller_idx").on(t.sellerId),
-    // A zone can only have one live order at a time; released orders (expired holds, refunds) keep their row
-    // for the record but no longer block a resale.
+    // A zone can only have one paid (or in-fulfilment) order. Unpaid checkouts do not occupy the slot.
     uniqueIndex("orders_zone_live_idx")
       .on(t.zoneId)
-      .where(sql`status NOT IN ('cancelled', 'refunded')`),
+      .where(sql`status NOT IN ('cancelled', 'refunded', 'pending_payment')`),
   ],
 );
 

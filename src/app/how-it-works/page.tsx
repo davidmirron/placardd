@@ -16,7 +16,7 @@ const creatorSteps = [
 
 const brandSteps = [
   ["Browse or search", "Filter by event type, what the logo is on, location, price and reach. Open a listing to see the mapped spots on real photos."],
-  ["Buy the spot", "Hit Buy now and you go straight to checkout. The spot is reserved for you while you pay and is yours the moment payment clears."],
+  ["Buy the spot", "Hit Buy now and you go straight to checkout. The spot stays on sale until payment clears — clicking Buy now does not reserve it."],
   ["Send your assets", "Upload print-ready logos and placement notes on the order, and message the creator with any questions."],
   ["Approve proof", "After the event the creator uploads proof. Approve it to release payment, or flag an issue if something isn't right."],
 ];
@@ -107,8 +107,8 @@ export default function HowItWorksPage() {
             </p>
           </div>
           <div className="rounded-2xl border p-6">
-            <h3 className="font-medium">A short hold while you pay</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Clicking Buy now holds the spot for one hour while you complete checkout. If payment doesn&apos;t arrive, the spot goes straight back on sale.</p>
+            <h3 className="font-medium">Yours when you pay</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Clicking Buy now does not reserve the spot. It stays on sale until payment clears. If you leave checkout, anyone else can still buy it.</p>
           </div>
         </div>
       </section>

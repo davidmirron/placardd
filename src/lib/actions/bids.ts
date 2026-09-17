@@ -53,7 +53,6 @@ export async function buyNowAction(_prev: ActionState, form: FormData): Promise<
   try {
     const { orderId } = await buyNow(zoneIds, user.id);
     revalidatePath(`/listings/${listingId}`);
-    // The spots are held for a short window while the brand pays; unpaid holds are released by settleExpired.
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
       with: {

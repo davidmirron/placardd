@@ -2,13 +2,13 @@ import "server-only";
 import { cache } from "react";
 import { and, asc, desc, eq, inArray, isNotNull, like, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bids, conversations, EVENT_TYPES, LISTING_CATEGORIES, listings, messages, orders, RELEASED_ORDER_STATUSES, reviews, users, zones, type EventType, type ListingCategory } from "@/lib/db/schema";
+import { bids, conversations, EVENT_TYPES, HOLDING_ORDER_STATUSES, LISTING_CATEGORIES, listings, messages, orders, reviews, users, zones, type EventType, type ListingCategory } from "@/lib/db/schema";
 import { isZoneLive, settleExpired } from "@/lib/auctions";
 import { allOrderZoneIds, orderHoldsZone } from "@/lib/order-spots";
 
-/** The order currently holding a zone, ignoring expired holds and refunds that no longer block a resale. */
+/** The order currently holding a zone. Unpaid checkouts do not count. */
 export function liveOrder<T extends { status: string }>(zoneOrders: T[] | null | undefined): T | null {
-  return zoneOrders?.find((o) => !(RELEASED_ORDER_STATUSES as readonly string[]).includes(o.status)) ?? null;
+  return zoneOrders?.find((o) => (HOLDING_ORDER_STATUSES as readonly string[]).includes(o.status)) ?? null;
 }
 
 export type ListingSort = "ending" | "newest" | "price_asc" | "price_desc" | "reach";
@@ -133,6 +133,9 @@ export const getListingDetail = cache(async (id: string) => {
       live: isZoneLive(z, now),
       order: liveOrder(zoneOrders) ?? liveOrder(listingOrders.filter((o) => orderHoldsZone(o, z.id) && o.zoneId !== z.id)),
     })),
+    pendingOrders: listingOrders
+      .filter((o) => o.status === "pending_payment")
+      .map((o) => ({ id: o.id, buyerId: o.buyerId, zoneIds: allOrderZoneIds(o) })),
     sellerStats: stats,
   };
 });
@@ -228,6 +231,7 @@ export async function getBrandDashboard(userId: string) {
 }
 
 export async function getOrderForUser(orderId: string, userId: string) {
+  await settleExpired();
   const order = await db.query.orders.findFirst({
     where: eq(orders.id, orderId),
     with: {

@@ -64,6 +64,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   }));
 
   const messageSeller = startConversation.bind(null, listing.sellerId, listing.id);
+  const unpaidZoneIds = user ? (listing.pendingOrders.find((o) => o.buyerId === user.id)?.zoneIds ?? []) : [];
 
   return (
     <div className="container-page py-8 lg:py-12">
@@ -125,6 +126,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             viewer={user ? { id: user.id, role: user.role } : null}
             isOwner={isOwner}
             listingActive={listing.status === "active"}
+            unpaidZoneIds={unpaidZoneIds}
           />
 
           <section className="space-y-3">

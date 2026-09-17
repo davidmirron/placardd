@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, type Db } from "@/lib/db";
-import { bids, listings, orders, reviews, zones, type Zone } from "@/lib/db/schema";
+import { bids, listings, orders, reviews, zones, HOLDING_ORDER_STATUSES, type Zone } from "@/lib/db/schema";
 import {
   ANTI_SNIPE_WINDOW_MS,
   AUCTION_PAYMENT_WINDOW_MS,
@@ -46,7 +46,7 @@ async function claimZone(tx: Tx, zone: Zone, buyerId: string, amountCents: numbe
     .where(eq(zones.id, zone.id));
 }
 
-async function createOrder(tx: Tx, zone: Zone, buyerId: string, amountCents: number, sellerId: string) {
+async function createOrder(tx: Tx, zone: Zone, buyerId: string, amountCents: number, sellerId: string, claim: boolean) {
   const split = splitAmount(amountCents);
   const id = nanoid(14);
   await tx.insert(orders).values({
@@ -58,7 +58,9 @@ async function createOrder(tx: Tx, zone: Zone, buyerId: string, amountCents: num
     ...split,
     status: "pending_payment",
   });
-  await claimZone(tx, zone, buyerId, amountCents);
+  // Auction wins hold the spot because the winner is notified after the fact. Buy-now does not —
+  // the spot stays on sale until payment clears.
+  if (claim) await claimZone(tx, zone, buyerId, amountCents);
   return id;
 }
 
@@ -66,7 +68,6 @@ async function addZonesToPendingOrder(
   tx: Tx,
   order: { id: string; zoneId: string; additionalZoneIds: string; amountCents: number },
   extra: Zone[],
-  buyerId: string,
 ) {
   const held = new Set(allOrderZoneIds(order));
   const fresh = extra.filter((z) => !held.has(z.id));
@@ -76,7 +77,6 @@ async function addZonesToPendingOrder(
   for (const zone of fresh) {
     const price = buyNowPrice(zone);
     if (price == null) throw new AuctionError("This spot doesn't offer instant purchase.");
-    await claimZone(tx, zone, buyerId, price);
     added += price;
     addedIds.push(zone.id);
   }
@@ -116,7 +116,7 @@ export async function placeBid(zoneId: string, bidderId: string, amountCents: nu
       // Bidding at or above the buy-now price simply takes the spot at the buy-now price.
       await tx.insert(bids).values({ id: nanoid(14), zoneId, bidderId, amountCents: instantPrice });
       await tx.update(zones).set({ bidCount: sql`${zones.bidCount} + 1` }).where(eq(zones.id, zoneId));
-      const orderId = await createOrder(tx, zone, bidderId, instantPrice, zone.listing.sellerId);
+      const orderId = await createOrder(tx, zone, bidderId, instantPrice, zone.listing.sellerId, true);
       return { kind: "won" as const, orderId, amountCents: instantPrice };
     }
 
@@ -164,15 +164,15 @@ export async function buyNow(zoneIds: string[], buyerId: string) {
     const pending = await tx.query.orders.findFirst({
       where: and(eq(orders.buyerId, buyerId), eq(orders.listingId, listingId), eq(orders.status, "pending_payment")),
     });
-    if (pending) return addZonesToPendingOrder(tx, pending, spots, buyerId);
+    if (pending) return addZonesToPendingOrder(tx, pending, spots);
 
     const [first, ...rest] = spots;
     const price = buyNowPrice(first)!;
-    const orderId = await createOrder(tx, first, buyerId, price, first.listing.sellerId);
+    const orderId = await createOrder(tx, first, buyerId, price, first.listing.sellerId, false);
     if (rest.length === 0) return { orderId, amountCents: price };
     const created = await tx.query.orders.findFirst({ where: eq(orders.id, orderId) });
     if (!created) throw new AuctionError("Order was not created.");
-    return addZonesToPendingOrder(tx, created, rest, buyerId);
+    return addZonesToPendingOrder(tx, created, rest);
   });
 }
 
@@ -193,7 +193,7 @@ export async function settleExpired(listingId?: string) {
 
     for (const zone of expired) {
       if (zone.currentBidderId && zone.currentBidCents != null && zone.listing.status === "active") {
-        await createOrder(tx, zone, zone.currentBidderId, zone.currentBidCents, zone.listing.sellerId);
+        await createOrder(tx, zone, zone.currentBidderId, zone.currentBidCents, zone.listing.sellerId, true);
         summary.ordersCreated++;
       } else {
         await tx.update(zones).set({ status: "unsold" }).where(eq(zones.id, zone.id));
@@ -201,8 +201,8 @@ export async function settleExpired(listingId?: string) {
       }
     }
 
-    // Orders nobody paid for inside their window are released. Fixed-price buys are a checkout in
-    // progress and get a short hold; auction wins get longer because the winner is notified after the fact.
+    // Abandoned unpaid checkouts are cancelled. Buy-now never held the zone, so we only release
+    // auction wins that reserved the spot while the winner was notified.
     const pending = await tx.query.orders.findMany({
       where: and(
         eq(orders.status, "pending_payment"),
@@ -219,9 +219,39 @@ export async function settleExpired(listingId?: string) {
       const ids = stale.map((o) => o.id);
       await tx.update(orders).set({ status: "cancelled" }).where(inArray(orders.id, ids));
       for (const o of stale) {
-        for (const zoneId of allOrderZoneIds(o)) await releaseZone(tx, zoneId, now);
+        if (o.zone.saleType === "auction") {
+          for (const zoneId of allOrderZoneIds(o)) await releaseZone(tx, zoneId, now);
+        }
       }
       summary.ordersExpired += ids.length;
+    }
+
+    // Buy-now used to mark the zone sold at checkout. Reopen any sold zone that isn't
+    // actually held by a paid order or an unpaid auction win, so leftover holds go back on sale
+    // as soon as a page is read — not after the unpaid-checkout cleanup window.
+    const soldZones = await tx.query.zones.findMany({
+      where: and(eq(zones.status, "sold"), listingId ? eq(zones.listingId, listingId) : undefined),
+      columns: { id: true, listingId: true },
+    });
+    if (soldZones.length) {
+      const listingIds = listingId ? [listingId] : [...new Set(soldZones.map((z) => z.listingId))];
+      const related = await tx.query.orders.findMany({
+        where: and(
+          inArray(orders.listingId, listingIds),
+          inArray(orders.status, [...HOLDING_ORDER_STATUSES, "pending_payment"]),
+        ),
+        columns: { id: true, status: true, zoneId: true, additionalZoneIds: true },
+        with: { zone: { columns: { saleType: true } } },
+      });
+      const reserved = new Set<string>();
+      for (const o of related) {
+        const holds = (HOLDING_ORDER_STATUSES as readonly string[]).includes(o.status) || o.zone.saleType === "auction";
+        if (!holds) continue;
+        for (const zoneId of allOrderZoneIds(o)) reserved.add(zoneId);
+      }
+      for (const zone of soldZones) {
+        if (!reserved.has(zone.id)) await releaseZone(tx, zone.id, now);
+      }
     }
 
     // Proof the brand never responded to is approved automatically once the review window closes.
@@ -268,7 +298,7 @@ export async function settleExpired(listingId?: string) {
 }
 
 /**
- * Puts a zone back on sale after its order fell through (unpaid hold, refund). If the listing has already
+ * Puts a zone back on sale after its order fell through (unpaid auction win, refund). If the listing has already
  * closed the zone is marked unsold instead so it can't be bought after the deadline.
  */
 export async function releaseZone(tx: Tx, zoneId: string, now = new Date()) {

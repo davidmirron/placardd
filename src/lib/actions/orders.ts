@@ -1,11 +1,11 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { orderFiles, orders, reviews } from "@/lib/db/schema";
+import { orderFiles, orders, reviews, zones } from "@/lib/db/schema";
 import { releaseZone } from "@/lib/auctions";
 import { requireUser } from "@/lib/auth";
 import { activeProvider, createCheckoutUrl, markOrderPaid, refundPayment } from "@/lib/payments";
@@ -30,7 +30,12 @@ export async function startCheckout(orderId: string): Promise<ActionState> {
   const { order, isBuyer } = await loadOrder(orderId, user.id);
   if (!isBuyer) return { error: "Only the buyer can pay for this order." };
   if (order.status !== "pending_payment") return { error: "This order isn't awaiting payment." };
-  const labels = allOrderZoneIds(order).map((id) => order.listing.zones.find((z) => z.id === id)?.label ?? order.zone.label);
+  const zoneIds = allOrderZoneIds(order);
+  const current = await db.query.zones.findMany({ where: inArray(zones.id, zoneIds), columns: { id: true, status: true } });
+  if (current.length !== zoneIds.length || current.some((z) => z.status !== "open")) {
+    return { error: "This spot sold before you paid. It was never reserved — pick another, or try a different listing." };
+  }
+  const labels = zoneIds.map((id) => order.listing.zones.find((z) => z.id === id)?.label ?? order.zone.label);
   const url = await createCheckoutUrl(order, orderLineDescription(labels, order.listing.title));
   redirect(url);
 }
@@ -41,7 +46,8 @@ export async function completeMockPayment(orderId: string): Promise<ActionState>
   const user = await requireUser(`/orders/${orderId}`);
   const { isBuyer } = await loadOrder(orderId, user.id);
   if (!isBuyer) return { error: "Only the buyer can pay for this order." };
-  await markOrderPaid(orderId, "mock", `test_${nanoid(10)}`);
+  const result = await markOrderPaid(orderId, "mock", `test_${nanoid(10)}`);
+  if (result === "taken") redirect(`/orders/${orderId}?taken=1`);
   revalidatePath(`/orders/${orderId}`);
   redirect(`/orders/${orderId}?paid=1`);
 }
