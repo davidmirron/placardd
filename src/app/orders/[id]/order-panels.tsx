@@ -12,7 +12,7 @@ import { FormMessage, SubmitButton } from "@/components/form-bits";
 import { approveProof, attachOrderFile, disputeOrder, leaveReview, refundOrder, removeOrderFile, saveBrandNotes, startCheckout, submitProof } from "@/lib/actions/orders";
 import type { ActionState } from "@/lib/actions/types";
 import { PROOF_REVIEW_WINDOW_DAYS, REVIEW_REVEAL_WINDOW_DAYS, SUPPORT_EMAIL } from "@/lib/constants";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type FileView = { id: string; url: string; mime: string; note: string };
@@ -165,8 +165,20 @@ export function ProofSentPanel({ submittedAt, deadline, brandName, payoutCents }
   );
 }
 
-/** Brand, proof submitted: approve, or flag what's wrong. */
-export function ReviewProofPanel({ orderId, deadline, creatorName }: { orderId: string; deadline: Date; creatorName: string }) {
+/** Brand, proof submitted: photos sit with the approve/flag actions so they don't have to hunt. */
+export function ReviewProofPanel({
+  orderId,
+  deadline,
+  creatorName,
+  proofs,
+  submittedAt,
+}: {
+  orderId: string;
+  deadline: Date;
+  creatorName: string;
+  proofs: FileView[];
+  submittedAt?: Date | null;
+}) {
   const { state, pending, run } = useRunner();
   const [flagging, setFlagging] = useState(false);
   return (
@@ -178,6 +190,12 @@ export function ReviewProofPanel({ orderId, deadline, creatorName }: { orderId: 
           <span className="font-medium text-foreground">{formatDate(deadline)}</span> — after that the payout releases automatically.
         </p>
       </div>
+      {proofs.length > 0 && (
+        <div className="space-y-2">
+          <FileGrid files={proofs} />
+          {submittedAt && <p className="text-xs text-muted-foreground">Submitted {formatDateTime(submittedAt)}</p>}
+        </div>
+      )}
       {flagging ? (
         <DisputeForm orderId={orderId} onCancel={() => setFlagging(false)} />
       ) : (
