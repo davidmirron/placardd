@@ -134,7 +134,7 @@ export function ListingSpots({
         )}
       </section>
 
-      <section className="space-y-4">
+      <section className={cn("space-y-4", canBundle && "pb-24")}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{pluralize(spots.length, "ad spot")}</h2>
           <p className="text-sm text-muted-foreground">{canBundle ? "Tick the spots you want, then buy them together" : "Tap a spot on the photo to jump to it"}</p>
