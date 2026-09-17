@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { bids, conversations, listings, messages, orders, reviews, users, zones, type ListingCategory } from "@/lib/db/schema";
 import { isZoneLive, settleExpired } from "@/lib/auctions";
 import { LISTING_CATEGORIES, RELEASED_ORDER_STATUSES } from "@/lib/db/schema";
+import { allOrderZoneIds, orderHoldsZone } from "@/lib/order-spots";
 
 /** The order currently holding a zone, ignoring expired holds and refunds that no longer block a resale. */
 export function liveOrder<T extends { status: string }>(zoneOrders: T[] | null | undefined): T | null {
@@ -107,6 +108,7 @@ export const getListingDetail = cache(async (id: string) => {
     with: {
       seller: true,
       photos: { orderBy: asc(sql`sort_order`) },
+      orders: { columns: { id: true, status: true, buyerId: true, zoneId: true, additionalZoneIds: true } },
       zones: {
         orderBy: asc(sql`sort_order`),
         with: {
@@ -120,9 +122,14 @@ export const getListingDetail = cache(async (id: string) => {
   if (!listing) return null;
   const stats = await sellerStats(listing.sellerId);
   const now = Date.now();
+  const { orders: listingOrders, ...rest } = listing;
   return {
-    ...listing,
-    zones: listing.zones.map(({ orders: zoneOrders, ...z }) => ({ ...z, live: isZoneLive(z, now), order: liveOrder(zoneOrders) })),
+    ...rest,
+    zones: listing.zones.map(({ orders: zoneOrders, ...z }) => ({
+      ...z,
+      live: isZoneLive(z, now),
+      order: liveOrder(zoneOrders) ?? liveOrder(listingOrders.filter((o) => orderHoldsZone(o, z.id) && o.zoneId !== z.id)),
+    })),
     sellerStats: stats,
   };
 });
@@ -179,7 +186,11 @@ export async function getCreatorDashboard(userId: string) {
     db.query.orders.findMany({
       where: eq(orders.sellerId, userId),
       orderBy: desc(orders.createdAt),
-      with: { zone: { columns: { label: true } }, listing: { columns: { id: true, title: true } }, buyer: { columns: { name: true, companyName: true, handle: true } } },
+      with: {
+        zone: { columns: { label: true } },
+        listing: { columns: { id: true, title: true }, with: { zones: { columns: { id: true, label: true } } } },
+        buyer: { columns: { name: true, companyName: true, handle: true } },
+      },
     }),
   ]);
   const earnings = myOrders.filter((o) => ["paid", "proof_submitted", "completed"].includes(o.status)).reduce((s, o) => s + o.sellerNetCents, 0);
@@ -202,7 +213,11 @@ export async function getBrandDashboard(userId: string) {
     db.query.orders.findMany({
       where: eq(orders.buyerId, userId),
       orderBy: desc(orders.createdAt),
-      with: { zone: { columns: { label: true } }, listing: { columns: { id: true, title: true, eventName: true } }, seller: { columns: { name: true, handle: true } } },
+      with: {
+        zone: { columns: { label: true } },
+        listing: { columns: { id: true, title: true, eventName: true }, with: { zones: { columns: { id: true, label: true } } } },
+        seller: { columns: { name: true, handle: true } },
+      },
     }),
   ]);
   const spend = myOrders.filter((o) => !["cancelled", "refunded", "pending_payment"].includes(o.status)).reduce((s, o) => s + o.amountCents, 0);
@@ -223,7 +238,16 @@ export async function getOrderForUser(orderId: string, userId: string) {
   });
   if (!order) return null;
   if (order.buyerId !== userId && order.sellerId !== userId) return null;
-  return order;
+  const extraIds = allOrderZoneIds(order).filter((id) => id !== order.zoneId);
+  const extraZones = extraIds.length
+    ? await db.query.zones.findMany({
+        where: inArray(zones.id, extraIds),
+        with: { photo: true },
+      })
+    : [];
+  const extraById = new Map(extraZones.map((z) => [z.id, z]));
+  const spots = [order.zone, ...extraIds.map((id) => extraById.get(id)).filter((z): z is NonNullable<typeof extraZones[number]> => !!z)];
+  return { ...order, spots };
 }
 
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderForUser>>>;

@@ -11,11 +11,12 @@ import { requireUser } from "@/lib/auth";
 import { activeProvider, createCheckoutUrl, markOrderPaid, refundPayment } from "@/lib/payments";
 import { deleteUpload } from "@/lib/storage";
 import { fieldNumber, fieldString, type ActionState } from "./types";
+import { allOrderZoneIds, orderLineDescription } from "@/lib/order-spots";
 
 async function loadOrder(orderId: string, userId: string) {
   const order = await db.query.orders.findFirst({
     where: eq(orders.id, orderId),
-    with: { zone: true, listing: true },
+    with: { zone: true, listing: { with: { zones: { columns: { id: true, label: true } } } } },
   });
   if (!order) throw new Error("Order not found.");
   const isBuyer = order.buyerId === userId;
@@ -29,7 +30,8 @@ export async function startCheckout(orderId: string): Promise<ActionState> {
   const { order, isBuyer } = await loadOrder(orderId, user.id);
   if (!isBuyer) return { error: "Only the buyer can pay for this order." };
   if (order.status !== "pending_payment") return { error: "This order isn't awaiting payment." };
-  const url = await createCheckoutUrl(order, `${order.zone.label} · ${order.listing.title}`);
+  const labels = allOrderZoneIds(order).map((id) => order.listing.zones.find((z) => z.id === id)?.label ?? order.zone.label);
+  const url = await createCheckoutUrl(order, orderLineDescription(labels, order.listing.title));
   redirect(url);
 }
 
@@ -154,7 +156,7 @@ export async function refundOrder(orderId: string, _prev: ActionState, form: For
       .update(orders)
       .set({ status: "refunded", refundRef, refundedAt: new Date(), disputeReason: note ? `Refunded by creator: ${note}` : order.disputeReason })
       .where(eq(orders.id, orderId));
-    await releaseZone(tx, order.zoneId);
+    for (const zoneId of allOrderZoneIds(order)) await releaseZone(tx, zoneId);
   });
   revalidatePath(`/orders/${orderId}`);
   revalidatePath(`/listings/${order.listingId}`);

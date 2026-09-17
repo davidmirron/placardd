@@ -10,6 +10,7 @@ import { completeMockPayment } from "@/lib/actions/orders";
 import { formatMoney } from "@/lib/format";
 import { activeProvider } from "@/lib/payments";
 import { getOrderForUser } from "@/lib/queries";
+import { orderSpotHeading } from "@/lib/order-spots";
 
 export const metadata: Metadata = { title: "Checkout" };
 
@@ -37,7 +38,7 @@ export default async function CheckoutPage({ params }: PageProps<"/checkout/[ord
           <p className="text-sm text-muted-foreground">Paying {order.seller.name} via Placard</p>
           <p className="text-3xl font-semibold tabular-nums">{formatMoney(order.amountCents)}</p>
           <p className="text-sm text-muted-foreground">
-            {order.zone.label} · {order.listing.title}
+            {orderSpotHeading(order.spots.map((s) => s.label))} · {order.listing.title}
           </p>
         </div>
         <div className="space-y-3 rounded-xl border bg-muted/40 p-4 text-sm">

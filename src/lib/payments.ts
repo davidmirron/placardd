@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, zones, type Order } from "@/lib/db/schema";
 import { APP_NAME } from "@/lib/constants";
+import { allOrderZoneIds } from "@/lib/order-spots";
 
 /**
  * Payment providers. The platform collects the full amount and records its commission on the order.
@@ -52,15 +53,19 @@ export async function createCheckoutUrl(order: Order, description: string): Prom
   return session.url;
 }
 
-export async function markOrderPaid(orderId: string, provider: PaymentProvider, paymentRef: string) {
+export async function markOrderPaid(orderId: string, provider: PaymentProvider, paymentRef: string, paidAmountCents?: number) {
   await db.transaction(async (tx) => {
     const order = await tx.query.orders.findFirst({ where: eq(orders.id, orderId) });
     if (!order || order.status !== "pending_payment") return;
+    // Ignore a leftover checkout session from before more spots were added to this order.
+    if (paidAmountCents != null && paidAmountCents !== order.amountCents) return;
     await tx
       .update(orders)
       .set({ status: "paid", paymentProvider: provider, paymentRef, paidAt: new Date() })
       .where(eq(orders.id, orderId));
-    await tx.update(zones).set({ status: "sold" }).where(eq(zones.id, order.zoneId));
+    for (const zoneId of allOrderZoneIds(order)) {
+      await tx.update(zones).set({ status: "sold" }).where(eq(zones.id, zoneId));
+    }
   });
 }
 
@@ -86,6 +91,6 @@ export async function confirmStripeSession(sessionId: string) {
   const session = await stripe().checkout.sessions.retrieve(sessionId);
   const orderId = session.metadata?.orderId;
   if (orderId && session.payment_status === "paid") {
-    await markOrderPaid(orderId, "stripe", typeof session.payment_intent === "string" ? session.payment_intent : session.id);
+    await markOrderPaid(orderId, "stripe", typeof session.payment_intent === "string" ? session.payment_intent : session.id, session.amount_total ?? undefined);
   }
 }

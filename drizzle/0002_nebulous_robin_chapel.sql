@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `additional_zone_ids` text DEFAULT '[]' NOT NULL;

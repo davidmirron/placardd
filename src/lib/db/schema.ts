@@ -167,6 +167,8 @@ export const orders = sqliteTable(
     zoneId: text("zone_id")
       .notNull()
       .references(() => zones.id, { onDelete: "cascade" }),
+    // Extra spots on the same listing bought in this order. JSON string array of zone ids.
+    additionalZoneIds: text("additional_zone_ids").notNull().default("[]"),
     listingId: text("listing_id")
       .notNull()
       .references(() => listings.id, { onDelete: "cascade" }),

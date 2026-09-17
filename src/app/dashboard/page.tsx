@@ -8,8 +8,14 @@ import { requireUser } from "@/lib/auth";
 import { AUCTIONS_ENABLED, PROOF_REVIEW_WINDOW_MS } from "@/lib/constants";
 import { formatDate, formatMoney, pluralize } from "@/lib/format";
 import { getBrandDashboard, getCreatorDashboard, getUnreadMessageCount } from "@/lib/queries";
+import { allOrderZoneIds, orderLineDescription } from "@/lib/order-spots";
 
 export const metadata: Metadata = { title: "Dashboard" };
+
+function orderTableTitle(o: { zoneId: string; additionalZoneIds: string; zone: { label: string }; listing: { title: string; zones: { id: string; label: string }[] } }) {
+  const labels = allOrderZoneIds(o).map((id) => o.listing.zones.find((z) => z.id === id)?.label ?? o.zone.label);
+  return orderLineDescription(labels, o.listing.title);
+}
 
 /** Things that aren't orders but still deserve a glance: new messages, a missing profile photo. */
 async function Nudges({ userId, hasAvatar }: { userId: string; hasAvatar: boolean }) {
@@ -108,7 +114,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div>
                   <p className="font-medium">
-                    {o.zone.label} · {o.listing.title}
+                    {orderTableTitle(o)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {o.status === "disputed"
@@ -136,7 +142,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div>
                   <p className="font-medium">
-                    {o.zone.label} · {o.listing.title}
+                    {orderTableTitle(o)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Proof sent {formatDate(o.proofSubmittedAt)} · {formatMoney(o.sellerNetCents)} releases automatically on{" "}
@@ -220,7 +226,7 @@ async function CreatorDashboard({ userId }: { userId: string }) {
         empty={AUCTIONS_ENABLED ? "Orders appear here when a brand wins or buys one of your spots." : "Orders appear here when a brand buys one of your spots."}
         rows={data.orders.map((o) => ({
           id: o.id,
-          title: `${o.zone.label} · ${o.listing.title}`,
+          title: orderTableTitle(o),
           counterparty: o.buyer.companyName ?? o.buyer.name,
           amount: o.sellerNetCents,
           amountLabel: "You earn",
@@ -248,7 +254,7 @@ async function BrandDashboard({ userId }: { userId: string }) {
         {AUCTIONS_ENABLED ? (
           <Stat label="Live bids" value={String(liveBids.length)} hint={`Leading on ${leading.length}, outbid on ${liveBids.length - leading.length}`} />
         ) : (
-          <Stat label="Spots bought" value={String(activeOrders.length)} hint={activeOrders.length ? `${pluralize(activeOrders.filter((o) => o.status === "completed").length, "deal")} completed` : "Browse spots to buy your first"} />
+          <Stat label="Spots bought" value={String(activeOrders.reduce((n, o) => n + allOrderZoneIds(o).length, 0))} hint={activeOrders.length ? `${pluralize(activeOrders.filter((o) => o.status === "completed").length, "deal")} completed` : "Browse spots to buy your first"} />
         )}
         <Stat label="Total spend" value={formatMoney(data.spend)} hint="Paid orders" />
         <Stat label="Awaiting you" value={String(awaiting)} hint={toPay.length ? `${pluralize(toPay.length, "order")} to pay` : toReview.length ? "Proof to approve" : disputed.length ? "Open issue to resolve" : "All caught up"} />
@@ -262,7 +268,7 @@ async function BrandDashboard({ userId }: { userId: string }) {
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div>
                   <p className="font-medium">
-                    {o.zone.label} · {o.listing.title}
+                    {orderTableTitle(o)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {formatMoney(o.amountCents)} · {o.seller.name}
@@ -349,7 +355,7 @@ async function BrandDashboard({ userId }: { userId: string }) {
         empty={AUCTIONS_ENABLED ? "Won auctions and buy-now purchases show up here." : "Spots you buy show up here. Find a creator heading to the room your customers are in."}
         rows={data.orders.map((o) => ({
           id: o.id,
-          title: `${o.zone.label} · ${o.listing.title}`,
+          title: orderTableTitle(o),
           counterparty: o.seller.name,
           amount: o.amountCents,
           amountLabel: "Paid",

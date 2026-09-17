@@ -59,6 +59,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
     live: z.live,
     orderId: z.order?.id ?? null,
     orderBuyerId: z.order?.buyerId ?? null,
+    orderStatus: z.order?.status ?? null,
     bids: z.bids.map((b) => ({ id: b.id, amountCents: b.amountCents, at: b.createdAt.getTime(), bidder: b.bidder.companyName ?? b.bidder.name, bidderId: b.bidderId })),
   }));
 
