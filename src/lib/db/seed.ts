@@ -39,8 +39,8 @@ export async function seed() {
       handle: "vanessa",
       role: "creator",
       avatarUrl: "/demo/avatar-1.svg",
-      bio: "Crypto researcher & host. Speaking on two panels at Token2049 Singapore. The dress is the billboard.",
-      location: "Singapore",
+      bio: "Researcher and host. Speaking on two panels at SXSW. The dress is the billboard.",
+      location: "Austin, TX",
       socialHandle: "vanessalin",
       followers: 48200,
       website: "https://vanessalin.xyz",
@@ -238,18 +238,18 @@ export async function seed() {
       .where(sql`${zones.id} = ${input.zoneId}`);
   }
 
-  // 1. The Token2049 dress — the listing that started it all.
+  // 1. A speaker-dress listing with several priced spots — the marketplace's flagship demo.
   const dressEnds = now + 6 * DAY + 5 * HOUR;
   await createListing({
     id: "l_token2049_dress",
     sellerId: u.vanessa,
-    title: "Token2049 Singapore — logo spots on my speaker dress",
+    title: "SXSW Austin — logo spots on my speaker dress",
     description:
-      "I'm speaking on two main-stage panels and hosting the closing party at Token2049 Singapore. I'll wear this black column dress for the full two days plus the after-parties.\n\nEach spot gets a professionally heat-pressed logo in white or brand colour (I'll send proofs before printing). All sponsors are tagged in every outfit post on X and Instagram, listed on my personal site, and named in my panel intro.\n\nPrices are fixed — first brand to check out gets the spot. Spots come off sale six days before the event so the printer has time.",
+      "I'm speaking on two main-stage panels and hosting a closing party at SXSW. I'll wear this black column dress for the full two days plus the after-parties.\n\nEach spot gets a professionally heat-pressed logo in white or brand colour (I'll send proofs before printing). All sponsors are tagged in every outfit post on X and Instagram, listed on my personal site, and named in my panel intro.\n\nPrices are fixed — first brand to check out gets the spot. Spots come off sale six days before the event so the printer has time.",
     category: "outfit",
-    eventName: "Token2049 Singapore",
+    eventName: "SXSW Austin",
     eventDate: now + 17 * DAY,
-    location: "Singapore",
+    location: "Austin, TX",
     biddingEndsAt: dressEnds,
     reachInPerson: 25000,
     reachSocial: 48200,
