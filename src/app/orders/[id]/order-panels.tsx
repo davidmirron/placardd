@@ -59,9 +59,9 @@ export function PayPanel({
           <p className="mt-2 text-sm text-muted-foreground">
             Want another logo on this listing?{" "}
             <Link href={`/listings/${listingId}`} className="font-medium text-foreground underline underline-offset-4">
-              Add it to this order
+              Tick the spots you want
             </Link>{" "}
-            before you pay.
+            and buy them together.
           </p>
         </div>
         <Button size="lg" disabled={pending} onClick={() => run(() => startCheckout(orderId))}>
