@@ -10,7 +10,7 @@ The product plan, architecture decisions and roadmap live in [`docs/PLAN.md`](do
 
 - Creator and brand accounts (email + password, signed session cookie)
 - Listing builder: details → photo upload → draw ad spots with a drag-to-draw editor → set a price per spot → publish
-- **Fixed price, pay at checkout.** "Buy now" sends the brand straight to Stripe Checkout (or the built-in test checkout). The spot is held for one hour while they pay; unpaid holds are released automatically
+- **Fixed price, pay at checkout.** "Buy now" sends the brand straight to Stripe Checkout (or the built-in test checkout). The spot stays on sale until payment clears — unpaid checkouts do not reserve it
 - Optional "available until" date per listing (defaults to the end of the event day)
 - Browse with search, event type, ad surface, location, price and reach filters
 - Listing page with numbered zone overlays, countdowns, seller card
@@ -68,7 +68,7 @@ Copy `.env.example` to `.env.local` and adjust. Everything is optional for local
 - `PLATFORM_FEE_PERCENT` sets the commission (default 15).
 - `DATABASE_URL` accepts a local `file:` path or a Turso/libsql URL.
 - `SEED_DEMO_DATA` controls the demo accounts. Seeding is on in development and **off in production** unless set to `true` — the demo passwords are public.
-- `CRON_SECRET` protects `/api/cron/settle`, which a scheduler should call every few minutes to release unpaid holds, auto-approve unanswered proof, reveal sealed reviews and close listings on time. Settlement also happens lazily whenever listings are read, so the app works without it.
+- `CRON_SECRET` protects `/api/cron/settle`, which a scheduler should call every few minutes to cancel abandoned unpaid checkouts, auto-approve unanswered proof, reveal sealed reviews and close listings on time. Settlement also happens lazily whenever listings are read, so the app works without it.
 - `NEXT_PUBLIC_SUPPORT_EMAIL` is where "Escalate to Placard" on a disputed order sends people.
 - `NEXT_PUBLIC_AUCTIONS_ENABLED=true` turns the dormant auction engine on. Leave it unset.
 
@@ -91,7 +91,7 @@ src/app/            routes: landing, listings, sell flow, dashboard, orders, che
 src/components/     UI: zone editor, zone overlay, listing card, uploader, countdown, header, forms
 src/lib/db/         Drizzle schema, client, migrations runner, seed
 src/lib/actions/    server actions by domain (auth, listings, bids, orders, messages, profile)
-src/lib/auctions.ts buy-now, bid rules (flagged off), hold/payment windows, settlement
+src/lib/auctions.ts buy-now, bid rules (flagged off), payment windows, settlement
 src/lib/payments.ts payment provider abstraction (stripe | mock)
 src/lib/storage.ts  file storage abstraction (local disk)
 src/lib/queries.ts  read models for pages

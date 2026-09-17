@@ -63,7 +63,12 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
       )}
       {sp.cancelled && order.status === "pending_payment" && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Checkout was cancelled. {spots.length > 1 ? "The spots are" : "The spot is"} held for you for a short while — pay below to keep {spots.length > 1 ? "them" : "it"}, or {spots.length > 1 ? "they go" : "it goes"} back on sale.
+          Checkout was cancelled. {spots.length > 1 ? "These spots are" : "This spot is"} still on sale — pay below to lock {spots.length > 1 ? "them" : "it"} in, or someone else can take {spots.length > 1 ? "them" : "it"}.
+        </div>
+      )}
+      {sp.taken && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Someone else paid for {spots.length > 1 ? "these spots" : "this spot"} first. {isBuyer ? "Nothing was charged." : "The earlier checkout did not go through."}
         </div>
       )}
 
@@ -115,7 +120,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
         </div>
       )}
       {order.status === "cancelled" && (
-        <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">This order was cancelled before payment. No money changed hands and the spot went back on sale.</div>
+        <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">This order was cancelled before payment. No money changed hands. The spot was never reserved.</div>
       )}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -124,7 +129,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
             <PayPanel orderId={order.id} amountCents={order.amountCents} provider={activeProvider()} listingId={order.listingId} spotCount={spots.length} />
           )}
           {!isBuyer && order.status === "pending_payment" && (
-            <div className="rounded-2xl border p-5 text-sm text-muted-foreground">Waiting for {counterpartName} to pay. You&apos;ll be able to upload proof once payment lands.</div>
+            <div className="rounded-2xl border p-5 text-sm text-muted-foreground">Waiting for {counterpartName} to pay. {spots.length > 1 ? "These spots stay" : "The spot stays"} on sale until payment lands.</div>
           )}
 
           {order.status === "disputed" && (

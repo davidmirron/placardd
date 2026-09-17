@@ -67,6 +67,7 @@ export function ListingSpots({
   viewer,
   isOwner,
   listingActive,
+  unpaidZoneIds = [],
 }: {
   listingId: string;
   photos: Photo[];
@@ -74,6 +75,7 @@ export function ListingSpots({
   viewer: Viewer;
   isOwner: boolean;
   listingActive: boolean;
+  unpaidZoneIds?: string[];
 }) {
   const [photoId, setPhotoId] = useState(photos[0]?.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function ListingSpots({
   const canBundle = viewer?.role === "brand" && listingActive && spots.filter((s) => s.live && s.status === "open" && (!AUCTIONS_ENABLED || s.saleType !== "auction")).length >= 2;
   const pickedSpots = spots.filter((s) => pickedIds.includes(s.id));
   const pickedTotal = pickedSpots.reduce((sum, s) => sum + (buyNowPrice(s) ?? 0), 0);
-  const heldUnpaid = viewer ? spots.filter((s) => s.orderBuyerId === viewer.id && s.orderStatus === "pending_payment") : [];
+  const heldUnpaid = spots.filter((s) => unpaidZoneIds.includes(s.id));
 
   const selectSpot = (id: string, scroll = true) => {
     setSelectedId(id);
@@ -141,7 +143,7 @@ export function ListingSpots({
         </div>
         {heldUnpaid.length > 0 && (
           <p className="rounded-xl border border-brand/40 bg-brand-soft/40 px-4 py-3 text-sm">
-            You have an unpaid order for {heldUnpaid.map((s) => s.label).join(" + ")}. Buying another spot on this listing adds it to that order before you pay.
+            You have an unpaid checkout for {heldUnpaid.map((s) => s.label).join(" + ")}. Those spots are still on sale until you pay. Buying another spot on this listing adds it to that order.
           </p>
         )}
         {spots.length === 0 ? (
@@ -166,7 +168,7 @@ export function ListingSpots({
                   canPick={canBundle && s.live && s.status === "open"}
                   picked={pickedIds.includes(s.id)}
                   onTogglePick={() => togglePicked(s.id)}
-                  addToOrder={heldUnpaid.length > 0 && s.orderStatus !== "pending_payment"}
+                  addToOrder={unpaidZoneIds.length > 0 && !unpaidZoneIds.includes(s.id)}
                 />
               </div>
             ))}
@@ -403,7 +405,7 @@ function BidControls({
         )}
         {!isAuction && (
           <p className="text-sm text-muted-foreground">
-            {addToOrder ? "This gets added to your unpaid order on this listing." : "You'll be taken to checkout. The spot is yours once payment clears."}
+            {addToOrder ? "This gets added to your unpaid checkout. The spot stays on sale until you pay." : "You'll be taken to checkout. The spot stays on sale until payment clears."}
           </p>
         )}
         {instant != null && (

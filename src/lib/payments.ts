@@ -1,8 +1,9 @@
 import "server-only";
 import Stripe from "stripe";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, zones, type Order } from "@/lib/db/schema";
+import { buyNowPrice } from "@/lib/auctions";
 import { APP_NAME } from "@/lib/constants";
 import { allOrderZoneIds } from "@/lib/order-spots";
 
@@ -53,20 +54,77 @@ export async function createCheckoutUrl(order: Order, description: string): Prom
   return session.url;
 }
 
-export async function markOrderPaid(orderId: string, provider: PaymentProvider, paymentRef: string, paidAmountCents?: number) {
-  await db.transaction(async (tx) => {
-    const order = await tx.query.orders.findFirst({ where: eq(orders.id, orderId) });
-    if (!order || order.status !== "pending_payment") return;
-    // Ignore a leftover checkout session from before more spots were added to this order.
-    if (paidAmountCents != null && paidAmountCents !== order.amountCents) return;
-    await tx
-      .update(orders)
-      .set({ status: "paid", paymentProvider: provider, paymentRef, paidAt: new Date() })
-      .where(eq(orders.id, orderId));
-    for (const zoneId of allOrderZoneIds(order)) {
-      await tx.update(zones).set({ status: "sold" }).where(eq(zones.id, zoneId));
+class SpotTakenError extends Error {
+  constructor() {
+    super("spot_taken");
+    this.name = "SpotTakenError";
+  }
+}
+
+export async function markOrderPaid(orderId: string, provider: PaymentProvider, paymentRef: string, paidAmountCents?: number): Promise<"paid" | "skipped" | "taken"> {
+  try {
+    return await db.transaction(async (tx) => {
+      const order = await tx.query.orders.findFirst({ where: eq(orders.id, orderId) });
+      if (!order) return "skipped" as const;
+      // A late Stripe payment can land after we cancelled an abandoned unpaid checkout.
+      // If the spots are still open, payment still wins. Already-paid / refunded is a no-op.
+      if (order.status !== "pending_payment" && order.status !== "cancelled") return "skipped" as const;
+      // Ignore a leftover checkout session from before more spots were added to this order.
+      if (paidAmountCents != null && paidAmountCents !== order.amountCents) return "skipped" as const;
+
+      const zoneIds = allOrderZoneIds(order);
+      const current = await tx.query.zones.findMany({ where: inArray(zones.id, zoneIds) });
+      const byId = new Map(current.map((z) => [z.id, z]));
+      for (const zoneId of zoneIds) {
+        const zone = byId.get(zoneId);
+        if (!zone) throw new SpotTakenError();
+        // Auction wins (and leftover pre-change buy-now holds) already marked the zone sold
+        // for this buyer. Don't require it to be open, or payment would refund the winner.
+        if (zone.status === "sold" && zone.currentBidderId === order.buyerId) continue;
+        const price = buyNowPrice(zone) ?? zone.startingPriceCents;
+        const claimed = await tx
+          .update(zones)
+          .set({ status: "sold", currentBidCents: price, currentBidderId: order.buyerId })
+          .where(and(eq(zones.id, zoneId), eq(zones.status, "open")))
+          .returning({ id: zones.id });
+        if (claimed.length === 0) throw new SpotTakenError();
+      }
+
+      await tx
+        .update(orders)
+        .set({ status: "paid", paymentProvider: provider, paymentRef, paidAt: new Date() })
+        .where(eq(orders.id, orderId));
+
+      const rivals = await tx.query.orders.findMany({
+        where: and(eq(orders.listingId, order.listingId), eq(orders.status, "pending_payment"), ne(orders.id, orderId)),
+      });
+      const taken = new Set(zoneIds);
+      const rivalIds = rivals.filter((o) => allOrderZoneIds(o).some((id) => taken.has(id))).map((o) => o.id);
+      if (rivalIds.length) await tx.update(orders).set({ status: "cancelled" }).where(inArray(orders.id, rivalIds));
+
+      return "paid" as const;
+    });
+  } catch (err) {
+    if (!(err instanceof SpotTakenError)) throw err;
+    const order = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
+    if (provider === "stripe" && order && (order.status === "pending_payment" || order.status === "cancelled")) {
+      const refundRef = await refundPayment({ id: orderId, paymentProvider: provider, paymentRef, amountCents: order.amountCents });
+      await db
+        .update(orders)
+        .set({
+          status: "refunded",
+          paymentProvider: provider,
+          paymentRef,
+          refundRef,
+          refundedAt: new Date(),
+          disputeReason: "This spot sold to someone else before payment cleared. The charge was refunded.",
+        })
+        .where(eq(orders.id, orderId));
+    } else if (provider !== "stripe" && order && (order.status === "pending_payment" || order.status === "cancelled")) {
+      await db.update(orders).set({ status: "cancelled", paymentProvider: provider, paymentRef }).where(eq(orders.id, orderId));
     }
-  });
+    return "taken";
+  }
 }
 
 /**

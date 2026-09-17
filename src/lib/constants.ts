@@ -18,7 +18,7 @@ export const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
 /** An auction winner learns asynchronously, so they get this long to pay. */
 export const AUCTION_PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-/** A fixed-price buy is a checkout in progress; the spot is held only this long if payment never lands. */
+/** Abandoned unpaid checkouts are cancelled after this. They never held the spot. */
 export const BUY_NOW_HOLD_MS = 60 * 60 * 1000;
 
 /**
