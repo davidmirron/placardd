@@ -13,7 +13,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const results = await searchListings(filters);
-  const hasFilters = Boolean(filters.q || filters.category || filters.location || filters.minPrice || filters.maxPrice || filters.minReach);
+  const hasFilters = Boolean(filters.q || filters.eventType || filters.category || filters.location || filters.minPrice || filters.maxPrice || filters.minReach);
 
   return (
     <div className="container-page py-10">

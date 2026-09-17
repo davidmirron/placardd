@@ -29,6 +29,13 @@
       "when": 1789630057612,
       "tag": "0003_milky_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789631980907,
+      "tag": "0004_lucky_blink",
+      "breakpoints": true
     }
   ]
 }

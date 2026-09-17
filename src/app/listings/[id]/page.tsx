@@ -10,7 +10,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ListingSpots } from "./listing-spots";
 import { getCurrentUser } from "@/lib/auth";
 import { startConversation } from "@/lib/actions/messages";
-import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, CATEGORY_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, CATEGORY_LABELS, EVENT_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, formatReach, pluralize } from "@/lib/format";
 import { getListingDetail, getListingTitle } from "@/lib/queries";
 
@@ -88,6 +88,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
       <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
+            <Badge>{EVENT_TYPE_LABELS[listing.eventType]}</Badge>
             <Badge variant="secondary">{CATEGORY_LABELS[listing.category]}</Badge>
             {listing.status !== "active" && <ListingStatusBadge status={listing.status} />}
             {rules.includes("doubling") && <Badge className="border-transparent bg-brand text-brand-foreground">Doubling bids</Badge>}

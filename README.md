@@ -12,7 +12,7 @@ The product plan, architecture decisions and roadmap live in [`docs/PLAN.md`](do
 - Listing builder: details → photo upload → draw ad spots with a drag-to-draw editor → set a price per spot → publish
 - **Fixed price, pay at checkout.** "Buy now" sends the brand straight to Stripe Checkout (or the built-in test checkout). The spot is held for one hour while they pay; unpaid holds are released automatically
 - Optional "available until" date per listing (defaults to the end of the event day)
-- Browse with search, category, location, price and reach filters
+- Browse with search, event type, ad surface, location, price and reach filters
 - Listing page with numbered zone overlays, countdowns, seller card
 - Orders: brand creative upload, seller proof upload, approval, issue flagging, creator-initiated refunds (Stripe or test mode). Unanswered proof is auto-approved after 7 days so payouts can't be stalled by silence
 - Placard's commission (default 15%) is recorded on every order. Brands only ever see the price; creators see their net earnings when they set a price and on the order — it is never shown as a fee line

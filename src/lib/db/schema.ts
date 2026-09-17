@@ -20,6 +20,18 @@ export const LISTING_CATEGORIES = [
 ] as const;
 export type ListingCategory = (typeof LISTING_CATEGORIES)[number];
 
+/** What kind of event this is — not the same as the ad surface (outfit, car, bag). */
+export const EVENT_TYPES = [
+  "sports",
+  "race",
+  "conference",
+  "convention",
+  "gaming",
+  "festival",
+  "other",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+
 export const LISTING_STATUSES = ["draft", "active", "ended", "cancelled"] as const;
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
@@ -80,6 +92,7 @@ export const listings = sqliteTable(
     title: text("title").notNull(),
     description: text("description").notNull().default(""),
     category: text("category", { enum: LISTING_CATEGORIES }).notNull(),
+    eventType: text("event_type", { enum: EVENT_TYPES }).notNull().default("other"),
     eventName: text("event_name"),
     eventDate: timestamp("event_date"),
     location: text("location").notNull().default(""),

@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FormMessage, SubmitButton } from "@/components/form-bits";
-import { AUCTIONS_ENABLED, CATEGORY_DESCRIPTIONS, CATEGORY_LABELS } from "@/lib/constants";
+import { AUCTIONS_ENABLED, CATEGORY_DESCRIPTIONS, CATEGORY_LABELS, EVENT_TYPE_DESCRIPTIONS, EVENT_TYPE_LABELS } from "@/lib/constants";
 import type { ActionState } from "@/lib/actions/types";
-import { LISTING_CATEGORIES, type Listing } from "@/lib/db/schema";
+import { EVENT_TYPES, LISTING_CATEGORIES, type Listing } from "@/lib/db/schema";
 
 function toLocalInput(d: Date | null | undefined) {
   if (!d) return "";
@@ -46,7 +46,7 @@ export function ListingForm({
           />
         </div>
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Category</legend>
+          <legend className="text-sm font-medium">What the logo is on</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {LISTING_CATEGORIES.map((c) => (
               <label key={c} className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 has-checked:border-foreground has-checked:bg-muted/60">
@@ -63,6 +63,21 @@ export function ListingForm({
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Event and timing</h2>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">What kind of event</legend>
+          <p className="text-xs text-muted-foreground">Sports, a race, a conference, a convention — not the same as what the logo sits on.</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {EVENT_TYPES.map((t) => (
+              <label key={t} className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 has-checked:border-foreground has-checked:bg-muted/60">
+                <input type="radio" name="eventType" value={t} defaultChecked={listing?.eventType === t} className="mt-1 accent-foreground" required />
+                <span>
+                  <span className="block text-sm font-medium">{EVENT_TYPE_LABELS[t]}</span>
+                  <span className="block text-xs text-muted-foreground">{EVENT_TYPE_DESCRIPTIONS[t]}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="eventName">Event name</Label>

@@ -151,6 +151,7 @@ export async function seed() {
     title: string;
     description: string;
     category: "outfit" | "vehicle" | "accessory" | "space" | "other";
+    eventType: "sports" | "race" | "conference" | "convention" | "gaming" | "festival" | "other";
     eventName: string;
     eventDate: number;
     location: string;
@@ -172,6 +173,7 @@ export async function seed() {
       title: input.title,
       description: input.description,
       category: input.category,
+      eventType: input.eventType,
       eventName: input.eventName,
       eventDate: new Date(input.eventDate),
       location: input.location,
@@ -251,6 +253,7 @@ export async function seed() {
     description:
       "I'm speaking on two main-stage panels and hosting a closing party at SXSW. I'll wear this black column dress for the full two days plus the after-parties.\n\nEach spot gets a professionally heat-pressed logo in white or brand colour (I'll send proofs before printing). All sponsors are tagged in every outfit post on X and Instagram, listed on my personal site, and named in my panel intro.\n\nPrices are fixed — first brand to check out gets the spot. Spots come off sale six days before the event so the printer has time.",
     category: "outfit",
+    eventType: "conference",
     eventName: "SXSW Austin",
     eventDate: now + 17 * DAY,
     location: "Austin, TX",
@@ -305,6 +308,7 @@ export async function seed() {
     description:
       "Running Berlin for a PB attempt. Full race is filmed by a two-person crew for my YouTube channel (average 180K views per race film) and I'm in the sub-elite start corral, so I'm on the broadcast start line.\n\nLogos are sublimated onto the singlet and shorts, so they look factory-made, not stuck on.",
     category: "outfit",
+    eventType: "race",
     eventName: "BMW Berlin Marathon",
     eventDate: now + 9 * DAY,
     location: "Berlin, Germany",
@@ -343,6 +347,7 @@ export async function seed() {
     description:
       "I drive between every Art Basel Miami venue for seven days and park in the creator lot at the Convention Center. Vinyl-wrapped panels, professionally installed and removed.\n\nEvery day of the week gets a TikTok car-vlog (avg 400K views) with the car in frame.",
     category: "vehicle",
+    eventType: "convention",
     eventName: "Art Basel Miami Beach",
     eventDate: now + 26 * DAY,
     location: "Miami, FL",
@@ -381,6 +386,7 @@ export async function seed() {
     description:
       "I attend every main-stage session from the front row and work from the press lounge between talks. My laptop lid faces the room on every panel I sit in, and the tote goes everywhere I go.\n\nGood for developer tools and early-stage startups who want founders to notice them.",
     category: "accessory",
+    eventType: "conference",
     eventName: "Web Summit Lisbon",
     eventDate: now + 40 * DAY,
     location: "Lisbon, Portugal",
@@ -410,6 +416,7 @@ export async function seed() {
     title: "ETHGlobal Brussels hackathon — laptop lid for 48 hours of hacking",
     description: "Hacked non-stop at ETHGlobal Brussels with the lid facing the main hall.",
     category: "accessory",
+    eventType: "conference",
     eventName: "ETHGlobal Brussels",
     eventDate: now - 30 * DAY,
     location: "Brussels, Belgium",

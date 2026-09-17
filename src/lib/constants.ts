@@ -1,4 +1,4 @@
-import type { BidRule, ListingCategory, OrderStatus, SaleType } from "@/lib/db/schema";
+import type { BidRule, EventType, ListingCategory, OrderStatus, SaleType } from "@/lib/db/schema";
 
 export const APP_NAME = "Placard";
 export const APP_TAGLINE = "Sell the space you already carry.";
@@ -55,6 +55,26 @@ export const CATEGORY_DESCRIPTIONS: Record<ListingCategory, string> = {
   accessory: "Bags, laptops, phone cases, water bottles",
   space: "Booth walls, signage, banners, apartment windows",
   other: "Anything else that will be seen",
+};
+
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  sports: "Sports",
+  race: "Race",
+  conference: "Conference",
+  convention: "Convention / expo",
+  gaming: "Gaming",
+  festival: "Festival",
+  other: "Other",
+};
+
+export const EVENT_TYPE_DESCRIPTIONS: Record<EventType, string> = {
+  sports: "Matches, tournaments, leagues",
+  race: "Marathons, cycling, motorsport",
+  conference: "Summits, panels, corporate events",
+  convention: "Trade shows, expos, conventions",
+  gaming: "Esports, LANs, gaming expos",
+  festival: "Music, culture, nightlife",
+  other: "Anything else",
 };
 
 export const SALE_TYPE_LABELS: Record<SaleType, string> = {

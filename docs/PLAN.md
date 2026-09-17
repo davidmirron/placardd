@@ -23,7 +23,7 @@ The first wedge is **events** (conferences, races, festivals, launches). Events 
 
 ## 2. Core loop
 
-1. Seller creates a listing for an event or time window: title, category (outfit, vehicle, accessory, space, other), location, event date, bidding deadline, expected reach (event attendance vs who will actually see you, plus social), optional audience profile, and what is included (printing, social posts, tagging).
+1. Seller creates a listing for an event or time window: title, ad surface (outfit, vehicle, accessory, space, other), event type (sports, race, conference, convention, gaming, festival), location, event date, bidding deadline, expected reach (event attendance vs who will actually see you, plus social), optional audience profile, and what is included (printing, social posts, tagging).
 2. Seller uploads photos (front / back / side / detail).
 3. Seller draws **ad zones** on the photos — rectangles with a label, size hint, sale type, and pricing rules.
 4. Listing goes live. Brands browse, filter, open the listing, see zones overlaid on the photos.
@@ -52,7 +52,7 @@ Messaging runs alongside the loop so brands can ask "can you fit a 10cm logo on 
 - Listing states: `draft`, `active`, `ended`, `cancelled`.
 
 **Discovery**
-- Browse grid with text search, category, location, price range, minimum reach, and sort (ending soon, newest, price).
+- Browse grid with text search, event type, ad surface, location, price range, minimum reach, and sort (ending soon, newest, price).
 - Listing detail: photo gallery with numbered zone overlays, spot cards with live price, bid history, countdown, seller card, included deliverables, message button.
 
 **Auctions & orders**

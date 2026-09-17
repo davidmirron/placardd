@@ -2,9 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { and, asc, desc, eq, inArray, isNotNull, like, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bids, conversations, listings, messages, orders, reviews, users, zones, type ListingCategory } from "@/lib/db/schema";
+import { bids, conversations, EVENT_TYPES, LISTING_CATEGORIES, listings, messages, orders, RELEASED_ORDER_STATUSES, reviews, users, zones, type EventType, type ListingCategory } from "@/lib/db/schema";
 import { isZoneLive, settleExpired } from "@/lib/auctions";
-import { LISTING_CATEGORIES, RELEASED_ORDER_STATUSES } from "@/lib/db/schema";
 import { allOrderZoneIds, orderHoldsZone } from "@/lib/order-spots";
 
 /** The order currently holding a zone, ignoring expired holds and refunds that no longer block a resale. */
@@ -16,6 +15,7 @@ export type ListingSort = "ending" | "newest" | "price_asc" | "price_desc" | "re
 
 export type ListingFilters = {
   q?: string;
+  eventType?: string;
   category?: string;
   location?: string;
   minPrice?: number;
@@ -31,9 +31,11 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
     return Number.isFinite(n) && n > 0 ? n : undefined;
   };
   const category = one("category");
+  const eventType = one("eventType");
   const sort = one("sort") as ListingSort;
   return {
     q: one("q") || undefined,
+    eventType: (EVENT_TYPES as readonly string[]).includes(eventType) ? eventType : undefined,
     category: (LISTING_CATEGORIES as readonly string[]).includes(category) ? category : undefined,
     location: one("location") || undefined,
     minPrice: num("minPrice"),
@@ -46,6 +48,7 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
 export async function searchListings(filters: ListingFilters) {
   await settleExpired();
   const conditions = [eq(listings.status, "active")];
+  if (filters.eventType) conditions.push(eq(listings.eventType, filters.eventType as EventType));
   if (filters.category) conditions.push(eq(listings.category, filters.category as ListingCategory));
   if (filters.location) conditions.push(like(listings.location, `%${filters.location}%`));
   if (filters.q) {

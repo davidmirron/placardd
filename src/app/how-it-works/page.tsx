@@ -7,7 +7,7 @@ import { PROOF_REVIEW_WINDOW_DAYS, REVIEW_REVEAL_WINDOW_DAYS } from "@/lib/const
 export const metadata: Metadata = { title: "How it works" };
 
 const creatorSteps = [
-  ["Create a listing", "Name the event, how big it is, and how many people will actually see you — not everyone at a marathon sees one runner."],
+  ["Create a listing", "Name the event, what kind it is, how big it is, and how many people will actually see you — not everyone at a marathon sees one runner."],
   ["Upload photos", "Front, back, sides, details. Good photos sell spots; brands need to see exactly where their logo lands."],
   ["Draw your ad spots", "Drag rectangles on each photo. Give every spot a name, a size hint, and a price. You see what you'll earn on each one before you publish."],
   ["Publish and share", "Post the link. Brands buy straight from the listing page, and each sale shows up on your dashboard as a paid order."],
@@ -15,7 +15,7 @@ const creatorSteps = [
 ];
 
 const brandSteps = [
-  ["Browse or search", "Filter by event, category, location, price and reach. Open a listing to see the mapped spots on real photos."],
+  ["Browse or search", "Filter by event type, what the logo is on, location, price and reach. Open a listing to see the mapped spots on real photos."],
   ["Buy the spot", "Hit Buy now and you go straight to checkout. The spot is reserved for you while you pay and is yours the moment payment clears."],
   ["Send your assets", "Upload print-ready logos and placement notes on the order, and message the creator with any questions."],
   ["Approve proof", "After the event the creator uploads proof. Approve it to release payment, or flag an issue if something isn't right."],

@@ -6,8 +6,8 @@ import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CATEGORY_LABELS } from "@/lib/constants";
-import { LISTING_CATEGORIES } from "@/lib/db/schema";
+import { CATEGORY_LABELS, EVENT_TYPE_LABELS } from "@/lib/constants";
+import { EVENT_TYPES, LISTING_CATEGORIES } from "@/lib/db/schema";
 import type { ListingFilters as Filters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +73,21 @@ export function ListingFilters({ filters }: { filters: Filters }) {
         </div>
 
         <fieldset className="space-y-1.5">
-          <legend className="text-sm font-medium">Category</legend>
+          <legend className="text-sm font-medium">Event type</legend>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="radio" name="eventType" value="" defaultChecked={!filters.eventType} className="accent-foreground" /> All
+            </label>
+            {EVENT_TYPES.map((t) => (
+              <label key={t} className="flex items-center gap-2 text-sm">
+                <input type="radio" name="eventType" value={t} defaultChecked={filters.eventType === t} className="accent-foreground" /> {EVENT_TYPE_LABELS[t]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="space-y-1.5">
+          <legend className="text-sm font-medium">Ad surface</legend>
           <div className="space-y-1">
             <label className="flex items-center gap-2 text-sm">
               <input type="radio" name="category" value="" defaultChecked={!filters.category} className="accent-foreground" /> All
