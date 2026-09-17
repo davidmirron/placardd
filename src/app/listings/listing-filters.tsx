@@ -88,7 +88,7 @@ export function ListingFilters({ filters }: { filters: Filters }) {
 
         <div className="space-y-1.5">
           <Label htmlFor="location">Location</Label>
-          <Input id="location" name="location" defaultValue={filters.location ?? ""} placeholder="Singapore, Berlin…" />
+          <Input id="location" name="location" defaultValue={filters.location ?? ""} placeholder="Berlin, Lisbon…" />
         </div>
 
         <div className="space-y-1.5">

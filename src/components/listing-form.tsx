@@ -33,7 +33,7 @@ export function ListingForm({
       <section className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="title">Title</Label>
-          <Input id="title" name="title" required minLength={4} maxLength={120} defaultValue={listing?.title} placeholder="Token2049 Singapore — logo spots on my speaker dress" />
+          <Input id="title" name="title" required minLength={4} maxLength={120} defaultValue={listing?.title} placeholder="Berlin Marathon — chest logo on my race kit" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="description">Description</Label>
@@ -66,7 +66,7 @@ export function ListingForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="eventName">Event name</Label>
-            <Input id="eventName" name="eventName" defaultValue={listing?.eventName ?? ""} placeholder="Token2049 Singapore" />
+            <Input id="eventName" name="eventName" defaultValue={listing?.eventName ?? ""} placeholder="Berlin Marathon" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="eventDate">Event date</Label>
@@ -74,7 +74,7 @@ export function ListingForm({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="location">Location</Label>
-            <Input id="location" name="location" required defaultValue={listing?.location} placeholder="Singapore" />
+            <Input id="location" name="location" required defaultValue={listing?.location} placeholder="Berlin, Germany" />
           </div>
           {AUCTIONS_ENABLED ? (
             <div className="space-y-1.5">
@@ -99,12 +99,12 @@ export function ListingForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="reachInPerson">People who will see you in person</Label>
-            <Input id="reachInPerson" name="reachInPerson" type="number" min={0} defaultValue={listing?.reachInPerson ?? ""} placeholder="25000" />
+            <Input id="reachInPerson" name="reachInPerson" type="number" min={0} defaultValue={listing?.reachInPerson ?? ""} placeholder="8000" />
             <p className="text-xs text-muted-foreground">Event attendance, spectators, foot traffic.</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="reachSocial">Social reach</Label>
-            <Input id="reachSocial" name="reachSocial" type="number" min={0} defaultValue={listing?.reachSocial ?? ""} placeholder="48000" />
+            <Input id="reachSocial" name="reachSocial" type="number" min={0} defaultValue={listing?.reachSocial ?? ""} placeholder="25000" />
             <p className="text-xs text-muted-foreground">Followers who will see the posts you promise.</p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export function ListingForm({
             name="includes"
             rows={4}
             defaultValue={listing?.includes}
-            placeholder={"Heat-pressed logo (up to 12cm)\nTagged in 4+ outfit posts on X and Instagram\nLogo + link on my website"}
+            placeholder={"Sublimated logo on race kit (up to 12cm)\nFeatured in my race film\nKit photos for your channels"}
           />
         </div>
       </section>

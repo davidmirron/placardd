@@ -69,7 +69,7 @@ export const BID_RULE_LABELS: Record<BidRule, string> = {
 
 export const BID_RULE_DESCRIPTIONS: Record<BidRule, string> = {
   increment: "Each new bid must beat the current bid by at least the minimum step.",
-  doubling: "Each new bid must be at least double the current bid. Fast and dramatic — the Token2049 rule.",
+  doubling: "Each new bid must be at least double the current bid. Fast and dramatic.",
 };
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {

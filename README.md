@@ -17,7 +17,7 @@ The product plan, architecture decisions and roadmap live in [`docs/PLAN.md`](do
 - Orders: brand creative upload, seller proof upload, approval, issue flagging, creator-initiated refunds (Stripe or test mode). Unanswered proof is auto-approved after 7 days so payouts can't be stalled by silence
 - Placard's commission (default 15%) is recorded on every order. Brands only ever see the price; creators see their net earnings when they set a price and on the order — it is never shown as a fee line
 - Double-blind reviews on completed orders (revealed when both sides have posted, or after 14 days), public profiles, direct messaging with unread badges, role-based dashboards
-- Seed data modelled on the Token2049 dress so the marketplace is never empty (development only by default)
+- Seed data so the marketplace is never empty (development only by default)
 - Auction engine (minimum-increment and doubling bids, anti-sniping, lazy settlement, 48h payment window) exists in the codebase but is **switched off** via `NEXT_PUBLIC_AUCTIONS_ENABLED` and is not part of the product
 
 ## Run it locally
@@ -39,7 +39,7 @@ All demo accounts use the password `password123`.
 
 | Role | Email | Notes |
 |---|---|---|
-| Creator | `vanessa@demo.placard.app` | Owns the Token2049 dress listing (2 of 7 spots sold) |
+| Creator | `vanessa@demo.placard.app` | Owns the SXSW dress listing (2 of 7 spots sold) |
 | Creator | `marcus@demo.placard.app` | Marathon kit that comes off sale in ~3 hours |
 | Creator | `sofia@demo.placard.app` | Car listing with a paid order waiting for proof |
 | Creator | `dev@demo.placard.app` | Has a completed order and reviews |

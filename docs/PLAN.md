@@ -2,7 +2,7 @@
 
 Placard is a two-sided marketplace for **on-body and physical sponsorships**. Anyone with a physical surface that will be seen — an outfit at a conference, a race kit, a car, a bag, a laptop lid, a booth wall — lists it, draws the exact ad zones on their photos, and lets brands bid on or buy those zones. After the event, the seller uploads proof, the brand confirms, and the seller gets paid minus the platform commission.
 
-The inspiration is the Token2049 dress auction: 13 logo spots, $350 starting bid, doubling on every outbid, plus social posts and a website listing. The thesis is that the old sponsorship world (agents, athletes, teams) already exists; the missing product is a **self-serve marketplace for everyone else**.
+The inspiration is creators selling logo spots on an outfit they already wear to a packed event, plus social posts and a website listing. The thesis is that the old sponsorship world (agents, athletes, teams) already exists; the missing product is a **self-serve marketplace for everyone else**.
 
 This document covers: what the MVP is, how it should work, what it is built on, and what is intentionally deferred.
 
@@ -29,7 +29,7 @@ The first wedge is **events** (conferences, races, festivals, launches). Events 
 4. Listing goes live. Brands browse, filter, open the listing, see zones overlaid on the photos.
 5. Brands bid (auction) or buy instantly (fixed price). Auctions support two rules:
    - **Increment**: each bid must exceed the current bid by a minimum step.
-   - **Doubling**: each bid must be at least 2x the current bid (the Token2049 rule). Fast, dramatic, and viral by design.
+   - **Doubling**: each bid must be at least 2x the current bid. Fast, dramatic, and viral by design.
    - Anti-sniping: a bid in the last 5 minutes extends the auction by 5 minutes.
 6. When the auction ends, the highest bidder wins and an **order** is created. Buy-now creates the order immediately.
 7. Brand pays. Platform holds the money and records its commission (default 15%). The brand sees only the price; the creator sees their net earnings.
@@ -128,7 +128,7 @@ Ordered roughly by expected impact once the concept is validated:
 5. **Shareable auction pages & embeds** — OG images per zone, "I just got outbid" share cards, a live bid ticker. This is the growth engine.
 6. **Polygon zones and multi-photo zones** — same spot visible in front and side photos.
 7. **Brand tools** — saved searches, alerts for new listings matching criteria, campaign grouping across many sellers at one event.
-8. **Event pages** — aggregate all sellers at Token2049 / a marathon / a festival.
+8. **Event pages** — aggregate all sellers at a conference / a marathon / a festival.
 9. **Disputes & moderation** — admin console, content policy, refund tooling.
 10. **Mobile capture** — camera-first listing creation on phones.
 11. **Scale infrastructure** — Postgres, background jobs (auction settlement, reminders), rate limiting, observability.
