@@ -17,7 +17,7 @@ export function MessageComposer({ conversationId, onSent }: { conversationId: st
   }, [state, onSent]);
 
   return (
-    <form ref={formRef} action={action} className="mt-4 space-y-2">
+    <form ref={formRef} action={action} className="mt-3 shrink-0 space-y-2 pb-1">
       <div className="flex items-end gap-2">
         <Textarea
           name="body"

@@ -21,7 +21,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   const firstUnreadId = convo.messages.find((m) => m.senderId !== user.id && m.createdAt.getTime() > readAt)?.id ?? null;
 
   return (
-    <div className="container-page flex max-w-3xl flex-col py-8" style={{ minHeight: "calc(100vh - 3.5rem)" }}>
+    <div className="container-page flex h-[calc(100vh-3.5rem)] max-w-3xl flex-col py-4">
       <MarkRead conversationId={convo.id} hasUnread={firstUnreadId !== null} />
       <div className="mb-4 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon-sm" aria-label="Back to messages">
