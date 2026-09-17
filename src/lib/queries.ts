@@ -50,7 +50,7 @@ export async function searchListings(filters: ListingFilters) {
   if (filters.location) conditions.push(like(listings.location, `%${filters.location}%`));
   if (filters.q) {
     const term = `%${filters.q}%`;
-    conditions.push(or(like(listings.title, term), like(listings.description, term), like(listings.eventName, term), like(listings.location, term))!);
+    conditions.push(or(like(listings.title, term), like(listings.description, term), like(listings.eventName, term), like(listings.location, term), like(listings.audienceProfile, term))!);
   }
   if (filters.minReach) conditions.push(sql`${listings.reachInPerson} + ${listings.reachSocial} >= ${filters.minReach}`);
 

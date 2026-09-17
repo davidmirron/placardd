@@ -7,7 +7,7 @@ import { PROOF_REVIEW_WINDOW_DAYS, REVIEW_REVEAL_WINDOW_DAYS } from "@/lib/const
 export const metadata: Metadata = { title: "How it works" };
 
 const creatorSteps = [
-  ["Create a listing", "Name the event or time window, where it happens, and how many people will see you — in person and online."],
+  ["Create a listing", "Name the event, how big it is, and how many people will actually see you — not everyone at a marathon sees one runner."],
   ["Upload photos", "Front, back, sides, details. Good photos sell spots; brands need to see exactly where their logo lands."],
   ["Draw your ad spots", "Drag rectangles on each photo. Give every spot a name, a size hint, and a price. You see what you'll earn on each one before you publish."],
   ["Publish and share", "Post the link. Brands buy straight from the listing page, and each sale shows up on your dashboard as a paid order."],

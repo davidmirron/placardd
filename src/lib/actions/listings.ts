@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { BID_RULES, LISTING_CATEGORIES, listings, photos, SALE_TYPES, zones } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
 import { AUCTIONS_ENABLED } from "@/lib/constants";
-import { dollarsToCents, fieldNumber, fieldString, type ActionState } from "./types";
+import { dollarsToCents, fieldCount, fieldString, type ActionState } from "./types";
 
 const DEFAULT_AVAILABILITY_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -21,8 +21,10 @@ const listingSchema = z.object({
   eventDate: z.string(),
   location: z.string().min(2, "Where will this be seen?").max(120),
   biddingEndsAt: z.string(),
+  eventAttendance: z.number().min(0),
   reachInPerson: z.number().min(0),
   reachSocial: z.number().min(0),
+  audienceProfile: z.string().max(500),
   includes: z.string().max(2000),
 });
 
@@ -35,8 +37,10 @@ function parseListingForm(form: FormData) {
     eventDate: fieldString(form, "eventDate"),
     location: fieldString(form, "location"),
     biddingEndsAt: fieldString(form, "biddingEndsAt"),
-    reachInPerson: fieldNumber(form, "reachInPerson"),
-    reachSocial: fieldNumber(form, "reachSocial"),
+    eventAttendance: fieldCount(form, "eventAttendance"),
+    reachInPerson: fieldCount(form, "reachInPerson"),
+    reachSocial: fieldCount(form, "reachSocial"),
+    audienceProfile: fieldString(form, "audienceProfile"),
     includes: fieldString(form, "includes"),
   });
 }
@@ -98,8 +102,10 @@ export async function createListing(_prev: ActionState, form: FormData): Promise
     eventDate: toDate(data.eventDate),
     location: data.location,
     biddingEndsAt,
+    eventAttendance: Math.round(data.eventAttendance),
     reachInPerson: Math.round(data.reachInPerson),
     reachSocial: Math.round(data.reachSocial),
+    audienceProfile: data.audienceProfile,
     includes: data.includes,
     status: "draft",
   });
@@ -127,8 +133,10 @@ export async function updateListing(listingId: string, _prev: ActionState, form:
         eventDate: toDate(data.eventDate),
         location: data.location,
         biddingEndsAt,
+        eventAttendance: Math.round(data.eventAttendance),
         reachInPerson: Math.round(data.reachInPerson),
         reachSocial: Math.round(data.reachSocial),
+        audienceProfile: data.audienceProfile,
         includes: data.includes,
         updatedAt: new Date(),
       })

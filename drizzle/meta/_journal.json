@@ -22,6 +22,13 @@
       "when": 1789624704252,
       "tag": "0002_nebulous_robin_chapel",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789630057612,
+      "tag": "0003_milky_stellaris",
+      "breakpoints": true
     }
   ]
 }
