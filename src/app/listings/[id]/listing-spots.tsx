@@ -143,7 +143,7 @@ export function ListingSpots({
         </div>
         {heldUnpaid.length > 0 && (
           <p className="rounded-xl border border-brand/40 bg-brand-soft/40 px-4 py-3 text-sm">
-            You have an unpaid checkout for {heldUnpaid.map((s) => s.label).join(" + ")}. {heldUnpaid.length === 1 ? "That spot is" : "Those spots are"} still on sale until you pay. Buying another spot on this listing adds it to that order.
+            You have an unpaid checkout for {heldUnpaid.map((s) => s.label).join(" + ")}. {heldUnpaid.length === 1 ? "That spot is" : "Those spots are"} still on sale until you pay. Buy now on a spot checks out that spot only — tick several to buy them together.
           </p>
         )}
         {spots.length === 0 ? (
@@ -168,7 +168,6 @@ export function ListingSpots({
                   canPick={canBundle && s.live && s.status === "open"}
                   picked={pickedIds.includes(s.id)}
                   onTogglePick={() => togglePicked(s.id)}
-                  addToOrder={unpaidZoneIds.length > 0 && !unpaidZoneIds.includes(s.id)}
                 />
               </div>
             ))}
@@ -208,7 +207,6 @@ function SpotCard({
   canPick,
   picked,
   onTogglePick,
-  addToOrder,
 }: {
   spot: SpotView;
   listingId: string;
@@ -220,7 +218,6 @@ function SpotCard({
   canPick: boolean;
   picked: boolean;
   onTogglePick: () => void;
-  addToOrder: boolean;
 }) {
   const live = spot.live && listingActive;
   // A legacy auction spot is shown as a plain purchase when auctions are switched off.
@@ -349,7 +346,7 @@ function SpotCard({
         ) : viewer.role !== "brand" ? (
           <p className="text-sm text-muted-foreground">Only brand accounts can {isAuction ? "bid or " : ""}buy. Create a brand account to take part.</p>
         ) : (
-          <BidControls key={`${minBid}-${instant ?? 0}`} spot={spot} listingId={listingId} minBid={minBid} instant={instant} leading={!!leading} isAuction={isAuction} addToOrder={addToOrder} />
+          <BidControls key={`${minBid}-${instant ?? 0}`} spot={spot} listingId={listingId} minBid={minBid} instant={instant} leading={!!leading} isAuction={isAuction} />
         )}
       </div>
     </div>
@@ -363,7 +360,6 @@ function BidControls({
   instant,
   leading,
   isAuction,
-  addToOrder,
 }: {
   spot: SpotView;
   listingId: string;
@@ -371,7 +367,6 @@ function BidControls({
   instant: number | null;
   leading: boolean;
   isAuction: boolean;
-  addToOrder: boolean;
 }) {
   const [bidState, bidAction] = useActionState(placeBidAction, undefined);
   const [buyState, buyAction] = useActionState(buyNowAction, undefined);
@@ -405,15 +400,15 @@ function BidControls({
         )}
         {!isAuction && (
           <p className="text-sm text-muted-foreground">
-            {addToOrder ? "This gets added to your unpaid checkout. The spot stays on sale until you pay." : "You'll be taken to checkout. The spot stays on sale until payment clears."}
+            You&apos;ll be taken to checkout for this spot. It stays on sale until payment clears.
           </p>
         )}
         {instant != null && (
           <form action={buyAction}>
             <input type="hidden" name="zoneId" value={spot.id} />
             <input type="hidden" name="listingId" value={listingId} />
-            <SubmitButton variant={isAuction ? "outline" : "default"} pendingText={addToOrder ? "Adding to order…" : "Heading to checkout…"}>
-              <Zap /> {addToOrder ? "Add to order" : "Buy now"} {formatMoney(instant)}
+            <SubmitButton variant={isAuction ? "outline" : "default"} pendingText="Heading to checkout…">
+              <Zap /> Buy now {formatMoney(instant)}
             </SubmitButton>
           </form>
         )}

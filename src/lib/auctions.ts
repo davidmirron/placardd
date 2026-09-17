@@ -164,7 +164,14 @@ export async function buyNow(zoneIds: string[], buyerId: string) {
     const pending = await tx.query.orders.findFirst({
       where: and(eq(orders.buyerId, buyerId), eq(orders.listingId, listingId), eq(orders.status, "pending_payment")),
     });
-    if (pending) return addZonesToPendingOrder(tx, pending, spots);
+    if (pending) {
+      const already = allOrderZoneIds(pending);
+      const sameSpots = already.length === ids.length && ids.every((id) => already.includes(id));
+      // Reuse the unpaid checkout only when it's exactly these spots. A new Buy now
+      // (or a different bundle) replaces it so leftover checkouts don't get extra spots.
+      if (sameSpots) return { orderId: pending.id, amountCents: pending.amountCents };
+      await tx.update(orders).set({ status: "cancelled" }).where(eq(orders.id, pending.id));
+    }
 
     const [first, ...rest] = spots;
     const price = buyNowPrice(first)!;
