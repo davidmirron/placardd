@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, asc, desc, eq, inArray, isNotNull, like, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bids, conversations, listings, messages, orders, reviews, users, zones, type ListingCategory } from "@/lib/db/schema";
@@ -6,8 +7,8 @@ import { isZoneLive, settleExpired } from "@/lib/auctions";
 import { LISTING_CATEGORIES, RELEASED_ORDER_STATUSES } from "@/lib/db/schema";
 
 /** The order currently holding a zone, ignoring expired holds and refunds that no longer block a resale. */
-export function liveOrder<T extends { status: string }>(zoneOrders: T[]): T | null {
-  return zoneOrders.find((o) => !(RELEASED_ORDER_STATUSES as readonly string[]).includes(o.status)) ?? null;
+export function liveOrder<T extends { status: string }>(zoneOrders: T[] | null | undefined): T | null {
+  return zoneOrders?.find((o) => !(RELEASED_ORDER_STATUSES as readonly string[]).includes(o.status)) ?? null;
 }
 
 export type ListingSort = "ending" | "newest" | "price_asc" | "price_desc" | "reach";
@@ -90,7 +91,16 @@ export async function searchListings(filters: ListingFilters) {
 
 export type ListingSummary = Awaited<ReturnType<typeof searchListings>>[number];
 
-export async function getListingDetail(id: string) {
+/** Title only — used by generateMetadata so a tab label never runs settlement. */
+export async function getListingTitle(id: string) {
+  const listing = await db.query.listings.findFirst({
+    where: eq(listings.id, id),
+    columns: { title: true },
+  });
+  return listing?.title ?? null;
+}
+
+export const getListingDetail = cache(async (id: string) => {
   await settleExpired(id);
   const listing = await db.query.listings.findFirst({
     where: eq(listings.id, id),
@@ -115,7 +125,7 @@ export async function getListingDetail(id: string) {
     zones: listing.zones.map(({ orders: zoneOrders, ...z }) => ({ ...z, live: isZoneLive(z, now), order: liveOrder(zoneOrders) })),
     sellerStats: stats,
   };
-}
+});
 
 export type ListingDetail = NonNullable<Awaited<ReturnType<typeof getListingDetail>>>;
 

@@ -12,12 +12,16 @@ import { getCurrentUser } from "@/lib/auth";
 import { startConversation } from "@/lib/actions/messages";
 import { AUCTIONS_ENABLED, BID_RULE_DESCRIPTIONS, CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, formatReach, pluralize } from "@/lib/format";
-import { getListingDetail } from "@/lib/queries";
+import { getListingDetail, getListingTitle } from "@/lib/queries";
 
 export async function generateMetadata({ params }: PageProps<"/listings/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const listing = await getListingDetail(id);
-  return { title: listing?.title ?? "Listing" };
+  try {
+    const title = await getListingTitle(id);
+    return { title: title ?? "Listing" };
+  } catch {
+    return { title: "Listing" };
+  }
 }
 
 export default async function ListingPage({ params, searchParams }: PageProps<"/listings/[id]">) {

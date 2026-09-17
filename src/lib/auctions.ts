@@ -126,7 +126,8 @@ export async function settleExpired(listingId?: string) {
   const now = new Date();
   const summary = { ordersCreated: 0, zonesUnsold: 0, listingsEnded: 0, ordersExpired: 0, proofsAutoApproved: 0, reviewsRevealed: 0 };
 
-  await db.transaction(async (tx) => {
+  try {
+    await db.transaction(async (tx) => {
     const expired = await tx.query.zones.findMany({
       where: and(eq(zones.status, "open"), lt(zones.endsAt, now), listingId ? eq(zones.listingId, listingId) : undefined),
       with: { listing: true },
@@ -197,7 +198,11 @@ export async function settleExpired(listingId?: string) {
       await tx.update(listings).set({ status: "ended", updatedAt: now }).where(and(inArray(listings.id, toEnd), ne(listings.status, "ended")));
       summary.listingsEnded += toEnd.length;
     }
-  });
+    });
+  } catch (err) {
+    // Called from page reads. A locked or racing transaction must not 500 the request.
+    console.error("settleExpired failed", listingId, err);
+  }
 
   return summary;
 }
