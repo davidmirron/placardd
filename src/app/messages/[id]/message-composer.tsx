@@ -6,13 +6,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormMessage, SubmitButton } from "@/components/form-bits";
 import { sendMessage } from "@/lib/actions/messages";
 
-export function MessageComposer({ conversationId }: { conversationId: string }) {
+export function MessageComposer({ conversationId, onSent }: { conversationId: string; onSent?: () => void }) {
   const [state, action] = useActionState(sendMessage.bind(null, conversationId), undefined);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state?.success) formRef.current?.reset();
-  }, [state]);
+    if (!state?.success) return;
+    formRef.current?.reset();
+    onSent?.();
+  }, [state, onSent]);
 
   return (
     <form ref={formRef} action={action} className="mt-4 space-y-2">

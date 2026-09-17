@@ -1,13 +1,15 @@
 "use server";
 
-import { and, eq, or } from "drizzle-orm";
+import { and, asc, eq, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { conversations, messages } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser, requireUser } from "@/lib/auth";
 import { fieldString, type ActionState } from "./types";
+
+export type ThreadMessage = { id: string; senderId: string; body: string; createdAt: number };
 
 /** Finds or creates the thread between the current user and another user (optionally about a listing). */
 export async function startConversation(otherUserId: string, listingId?: string) {
@@ -52,6 +54,24 @@ export async function sendMessage(conversationId: string, _prev: ActionState, fo
   revalidatePath(`/messages/${conversationId}`);
   revalidatePath("/messages");
   return { success: "sent" };
+}
+
+/** Lightweight poll for an open thread so new messages show up without a full reload. */
+export async function listConversationMessages(conversationId: string): Promise<ThreadMessage[] | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const convo = await db.query.conversations.findFirst({
+    where: eq(conversations.id, conversationId),
+    columns: { id: true, participantAId: true, participantBId: true },
+    with: {
+      messages: {
+        orderBy: asc(sql`created_at`),
+        columns: { id: true, senderId: true, body: true, createdAt: true },
+      },
+    },
+  });
+  if (!convo || (convo.participantAId !== user.id && convo.participantBId !== user.id)) return null;
+  return convo.messages.map((m) => ({ id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.getTime() }));
 }
 
 /** Called when a thread is opened so its messages stop counting as unread everywhere. */

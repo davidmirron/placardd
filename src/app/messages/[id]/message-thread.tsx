@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { ThreadMessage } from "@/lib/actions/messages";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-type ThreadMessage = { id: string; senderId: string; body: string; createdAt: number };
 
 /**
  * Renders the messages with a "New" divider above the first one the viewer hadn't seen.

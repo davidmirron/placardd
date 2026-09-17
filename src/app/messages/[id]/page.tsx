@@ -4,9 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
+import { ConversationChat } from "./conversation-chat";
 import { MarkRead } from "./mark-read";
-import { MessageComposer } from "./message-composer";
-import { MessageThread } from "./message-thread";
 import { requireUser } from "@/lib/auth";
 import { getConversation, readAtFor } from "@/lib/queries";
 
@@ -43,15 +42,12 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 rounded-2xl border p-4">
-        <MessageThread
-          messages={convo.messages.map((m) => ({ id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.getTime() }))}
-          viewerId={user.id}
-          firstUnreadId={firstUnreadId}
-        />
-      </div>
-
-      <MessageComposer conversationId={convo.id} />
+      <ConversationChat
+        conversationId={convo.id}
+        viewerId={user.id}
+        firstUnreadId={firstUnreadId}
+        initialMessages={convo.messages.map((m) => ({ id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.getTime() }))}
+      />
     </div>
   );
 }
